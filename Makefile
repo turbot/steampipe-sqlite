@@ -1,7 +1,4 @@
-export CGO_LDFLAGS = -Wl,--unresolved-symbols=ignore-in-object-files
-ifeq ($(shell uname -s),Darwin)
-	export CGO_LDFLAGS = -Wl,-undefined,dynamic_lookup
-endif
-
 build:
-	go build -buildmode=c-shared -o ../aws.so
+	go run generate/generator.go templates . $(plugin_alias) $(plugin_github_url)
+	go mod tidy
+	make -f out/Makefile build
