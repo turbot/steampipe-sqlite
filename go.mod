@@ -2,8 +2,6 @@ module steampipe-sqlite-extension
 
 go 1.21
 
-replace github.com/turbot/steampipe-plugin-aws => /Users/graza/src/integrated/steampipe-plugin-aws
-
 require (
 	github.com/turbot/steampipe-plugin-aws v0.120.2
 	github.com/turbot/steampipe-plugin-sdk/v5 v5.7.0-alpha.2

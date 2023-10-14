@@ -1,7 +1,10 @@
 # Steampipe SQLite Extension aws
 
+This SQLite extensions allows you to query aws using the [Steampipe Plugin](https://github.com/turbot/steampipe-plugin-aws)
+
 ## Prerequisites
-- A build of SQLite that supports extensions (default `brew` install has extensions disabled).
+- A build of SQLite that supports extensions, you can verify this by opening SQLite and ensuring `.help` displays a `.load command`.
+  - If required you can [download](https://www.sqlite.org/download.html) a pre-compiled binary or compile from [source](https://github.com/sqlite/sqlite#compiling-for-unix-like-systems)
 
 ## Configuration
 If you require [configuration](https://hub.steampipe.io/plugins/turbot/aws#configuration) for the extension, you need to set this prior to loading the extension.
