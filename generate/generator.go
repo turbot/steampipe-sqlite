@@ -23,7 +23,7 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
 
 		fmt.Println("filePath:", filePath)
 		if info.IsDir() {
-			fmt.Println("not a file, continuing...\n")
+			// fmt.Println("not a file, continuing...\n")
 			return nil
 		}
 
@@ -33,7 +33,7 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
 		// fmt.Println("extension:", ext)
 
 		if ext != templateExt {
-			fmt.Println("not tmpl, continuing...\n")
+			// fmt.Println("not tmpl, continuing...\n")
 			return nil
 		}
 
@@ -70,6 +70,11 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
 		// execute the template with the data
 		if err := tmpl.Execute(&renderedContent, data); err != nil {
 			fmt.Printf("Error rendering template: %v\n", err)
+			return err
+		}
+
+		if err := os.MkdirAll(filepath.Dir(targetFilePath), 0755); err != nil {
+			fmt.Printf("Error creating directory: %v\n", err)
 			return err
 		}
 
