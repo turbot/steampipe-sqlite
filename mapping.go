@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"strings"
+
+	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 )
 
 type SqliteColumn struct {
