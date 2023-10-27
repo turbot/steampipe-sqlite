@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	"go.riyazali.net/sqlite"
 )
 
 type SqliteColumn struct {
@@ -20,6 +21,22 @@ func (s SqliteColumns) DeclarationString() string {
 	}
 
 	return strings.Join(out, ", ")
+}
+
+func mapSqliteOpToPluginOp(op sqlite.ConstraintOp) string {
+	switch op {
+	case sqlite.INDEX_CONSTRAINT_EQ:
+		return "="
+	case sqlite.INDEX_CONSTRAINT_GT:
+		return ">"
+	case sqlite.INDEX_CONSTRAINT_LE:
+		return "<="
+	case sqlite.INDEX_CONSTRAINT_LT:
+		return "<"
+	case sqlite.INDEX_CONSTRAINT_GE:
+		return ">="
+	}
+	return "NOOP"
 }
 
 func parsePluginSchema(ts *proto.TableSchema) (SqliteColumns, error) {
