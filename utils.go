@@ -1,15 +1,20 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 )
 
-func BuildExecuteRequest(alias, table string, tableSchema *proto.TableSchema) *proto.ExecuteRequest {
-	var quals map[string]*proto.Quals
+func buildExecuteRequest(alias, table string, columns []string, quals map[string]*proto.Quals) *proto.ExecuteRequest {
+	// we don't get any limit - hard code this to -1
+	// needs investigation
 	limit := int64(-1)
 
-	qc := proto.NewQueryContext(tableSchema.GetColumnNames(), quals, limit)
+	fmt.Println("Quals:", quals)
+
+	qc := proto.NewQueryContext(columns, quals, limit)
 	ecd := proto.ExecuteConnectionData{
 		Limit:        qc.Limit,
 		CacheEnabled: false,

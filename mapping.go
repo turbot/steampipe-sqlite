@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -23,20 +24,20 @@ func (s SqliteColumns) DeclarationString() string {
 	return strings.Join(out, ", ")
 }
 
-func mapSqliteOpToPluginOp(op sqlite.ConstraintOp) string {
+func mapSqliteOpToPluginOpAndCost(op sqlite.ConstraintOp) (string, float64) {
 	switch op {
 	case sqlite.INDEX_CONSTRAINT_EQ:
-		return "="
+		return "=", 1
 	case sqlite.INDEX_CONSTRAINT_GT:
-		return ">"
+		return ">", 10
 	case sqlite.INDEX_CONSTRAINT_LE:
-		return "<="
+		return "<=", 10
 	case sqlite.INDEX_CONSTRAINT_LT:
-		return "<"
+		return "<", 10
 	case sqlite.INDEX_CONSTRAINT_GE:
-		return ">="
+		return ">=", 10
 	}
-	return "NOOP"
+	return "NOOP", math.MaxFloat64
 }
 
 func parsePluginSchema(ts *proto.TableSchema) (SqliteColumns, error) {
@@ -58,4 +59,18 @@ func GetMappedType(in proto.ColumnType) string {
 	default:
 		return "TEXT"
 	}
+}
+
+func getMappedQual(v sqlite.Value) *proto.QualValue {
+	switch v.Type() {
+	case sqlite.SQLITE_INTEGER:
+		return &proto.QualValue{Value: &proto.QualValue_Int64Value{Int64Value: v.Int64()}}
+	case sqlite.SQLITE_FLOAT:
+		return &proto.QualValue{Value: &proto.QualValue_DoubleValue{DoubleValue: v.Float()}}
+	case sqlite.SQLITE_TEXT:
+		return &proto.QualValue{Value: &proto.QualValue_StringValue{StringValue: v.Text()}}
+	case sqlite.SQLITE_NULL:
+		return &proto.QualValue{Value: nil}
+	}
+	return nil
 }
