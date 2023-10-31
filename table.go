@@ -46,27 +46,6 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 	fmt.Println("table.BestIndex")
 	defer fmt.Println("end table.BestIndex")
 
-	// check if the input constraints include all required key columns
-	for _, kc := range p.tableSchema.GetAllKeyColumns() {
-		if kc.Require == "require" {
-			// this is a required key column
-			// check if the input constraints include this column
-			// if not, then this plan is unusable
-			colName := kc.GetName()
-			found := false
-			// is this included in the input constraints?
-			for _, ic := range info.Constraints {
-				idxColName := p.tableSchema.Columns[ic.ColumnIndex].GetName()
-				if idxColName == colName {
-					found = true
-				}
-			}
-			if !found {
-				return nil, sqlite.SQLITE_CONSTRAINT
-			}
-		}
-	}
-
 	qc := &QueryContext{
 		Columns: p.getColumnsFromIndexInfo(info),
 	}
