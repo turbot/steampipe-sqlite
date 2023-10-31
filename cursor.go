@@ -25,37 +25,21 @@ func (p *PluginCursor) Filter(indexNumber int, indexString string, values ...sql
 	fmt.Println("cursor.Filter:", indexNumber, indexString, values)
 	defer fmt.Println("end cursor.Filter:", indexNumber, indexString, values)
 
-	qc := new(QueryContext)
-	if err := json.Unmarshal([]byte(indexString), qc); err != nil {
+	queryCtx, err := p.buildQueryContext(indexNumber, indexString, values...)
+	if err != nil {
 		return err
 	}
 
-	for i2, v := range values {
-		fmt.Println(">>> value:", i2, v.Type().String(), v.Text())
-	}
+	qualMap := p.buildQualMap(queryCtx, values...)
 
-	// build the qual map
-	qualMap := make(map[string]*proto.Quals)
-	for i, qual := range qc.Quals {
-		qualMap[qual.FieldName] = &proto.Quals{
-			Quals: []*proto.Qual{
-				{
-					FieldName: qual.FieldName,
-					Operator:  &proto.Qual_StringValue{StringValue: qual.Operator},
-					Value:     getMappedQual(values[i]),
-				},
-			},
-		}
-	}
-
-	execRequest := buildExecuteRequest(pluginAlias, p.table.name, qc.Columns, qualMap)
+	execRequest := buildExecuteRequest(pluginAlias, p.table.name, queryCtx, qualMap)
 
 	if err := pluginServer.CallExecute(execRequest, p.stream); err != nil {
 		return err
 	}
 
 	p.currentRow = 0
-	return p.Next()
+	return nil
 }
 
 // Next is called by SQLite to advance the cursor to the next row in the result set.
@@ -138,4 +122,42 @@ func (p *PluginCursor) Close() error {
 	defer fmt.Println("end cursor.Close")
 	p.cursorCancel()
 	return nil
+}
+
+func (p *PluginCursor) buildQueryContext(_ int, idxStr string, values ...sqlite.Value) (*QueryContext, error) {
+	qc := new(QueryContext)
+	if err := json.Unmarshal([]byte(idxStr), qc); err != nil {
+		return nil, err
+	}
+
+	if qc.Limit != nil {
+		// get the value at the given index
+		v := values[qc.Limit.Idx]
+		if v.Type() == sqlite.SQLITE_INTEGER {
+			qc.Limit.Rows = v.Int64()
+		} else {
+			// this should never happen, but for some reason, the value is not an integer
+			// so we will just ignore the limit
+			qc.Limit = nil
+		}
+	}
+
+	return qc, nil
+}
+
+func (p *PluginCursor) buildQualMap(qc *QueryContext, values ...sqlite.Value) map[string]*proto.Quals {
+	// build the qual map
+	qualMap := make(map[string]*proto.Quals)
+	for i, qual := range qc.Quals {
+		qualMap[qual.FieldName] = &proto.Quals{
+			Quals: []*proto.Qual{
+				{
+					FieldName: qual.FieldName,
+					Operator:  &proto.Qual_StringValue{StringValue: qual.Operator},
+					Value:     getMappedQual(values[i]),
+				},
+			},
+		}
+	}
+	return qualMap
 }

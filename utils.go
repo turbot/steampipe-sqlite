@@ -1,20 +1,16 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 )
 
-func buildExecuteRequest(alias, table string, columns []string, quals map[string]*proto.Quals) *proto.ExecuteRequest {
-	// we don't get any limit - hard code this to -1
-	// needs investigation
-	limit := int64(-1)
-
-	fmt.Println("Quals:", quals)
-
-	qc := proto.NewQueryContext(columns, quals, limit)
+func buildExecuteRequest(alias, table string, ctx *QueryContext, quals map[string]*proto.Quals) *proto.ExecuteRequest {
+	limitRows := int64(-1)
+	if ctx.Limit != nil {
+		limitRows = ctx.Limit.Rows
+	}
+	qc := proto.NewQueryContext(ctx.Columns, quals, limitRows)
 	ecd := proto.ExecuteConnectionData{
 		Limit:        qc.Limit,
 		CacheEnabled: false,
@@ -28,6 +24,5 @@ func buildExecuteRequest(alias, table string, columns []string, quals map[string
 		ExecuteConnectionData: make(map[string]*proto.ExecuteConnectionData),
 	}
 	req.ExecuteConnectionData[alias] = &ecd
-
 	return &req
 }

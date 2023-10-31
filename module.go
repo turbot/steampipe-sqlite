@@ -7,22 +7,6 @@ import (
 	"go.riyazali.net/sqlite"
 )
 
-/*
-QueryContext contains important query properties:
-  - The columns requested.
-  - The constraints specified.
-  - The query qualifiers (where clauses).
-*/
-type QueryContext struct {
-	Columns []string `json:"columns"`
-	Quals   []*Qual  `json:"quals"`
-}
-
-type Qual struct {
-	FieldName string `json:"field_name"`
-	Operator  string `json:"operator"`
-}
-
 type Module struct {
 	tableName   string
 	columns     SqliteColumns

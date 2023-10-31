@@ -12,6 +12,29 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+/*
+QueryContext contains important query properties:
+  - The columns requested.
+  - The constraints specified.
+  - The query qualifiers (where clauses).
+  - The limit (number of rows to return).
+*/
+type QueryContext struct {
+	Columns []string    `json:"columns"`
+	Quals   []*Qual     `json:"quals"`
+	Limit   *QueryLimit `json:"limit"`
+}
+
+type QueryLimit struct {
+	Rows int64 `json:"limit"` // the number of rows to return
+	Idx  int   `json:"idx"`   // the index in the values that Cursor.Filter receives
+}
+
+type Qual struct {
+	FieldName string `json:"field_name"`
+	Operator  string `json:"operator"`
+}
+
 type PluginTable struct {
 	name        string
 	tableSchema *proto.TableSchema
@@ -55,23 +78,40 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 		ConstraintUsage: make([]*sqlite.ConstraintUsage, len(info.Constraints)),
 	}
 
-	constraintUsageIdx := 0
-	for _, ic := range info.Constraints {
+	for idx, ic := range info.Constraints {
 		fmt.Println(">>>: ", ic.ColumnIndex, ic.Op, ic.Usable)
+
+		output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
+			Omit: true,
+		}
+
+		if ic.Op == sqlite.ConstraintOp(SQLITE_INDEX_CONSTRAINT_LIMIT) {
+			// sqlite passes LIMIT as a constraint (sort of makes sense)
+			// use it
+			limit := &QueryLimit{
+				Idx: idx,
+			}
+			output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
+				Omit:      false,
+				ArgvIndex: idx + 1, // according to https://www.sqlite.org/vtab.html, this should be 1-indexed
+			}
+			qc.Limit = limit
+			continue
+		}
+
 		if cost, usable := p.getConstraintCost(ic); usable {
 			if cost < output.EstimatedCost {
 				output.EstimatedCost = cost
 			}
-			output.ConstraintUsage[constraintUsageIdx] = &sqlite.ConstraintUsage{
+			output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
 				Omit:      false,
-				ArgvIndex: constraintUsageIdx + 1, // according to https://www.sqlite.org/vtab.html, this should be 1-indexed
+				ArgvIndex: idx + 1, // according to https://www.sqlite.org/vtab.html, this should be 1-indexed
 			}
 			pluginOperator, _ := mapSqliteOpToPluginOpAndCost(ic.Op)
 			qc.Quals = append(qc.Quals, &Qual{
 				FieldName: p.tableSchema.Columns[ic.ColumnIndex].GetName(),
 				Operator:  pluginOperator,
 			})
-			constraintUsageIdx++
 		}
 	}
 
