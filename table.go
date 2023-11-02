@@ -7,7 +7,6 @@ import (
 	"math"
 
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
-	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 	"go.riyazali.net/sqlite"
 	"golang.org/x/exp/maps"
 )
@@ -26,13 +25,18 @@ type QueryContext struct {
 }
 
 type QueryLimit struct {
-	Rows int64 `json:"limit"` // the number of rows to return
-	Idx  int   `json:"idx"`   // the index in the values that Cursor.Filter receives
+	Rows int64 // the number of rows to return
+	Idx  int   `json:"idx"` // the index in the values that Cursor.Filter receives
 }
 
 type Qual struct {
-	FieldName string `json:"field_name"`
-	Operator  string `json:"operator"`
+	FieldName        string                  `json:"field_name"`
+	Operator         string                  `json:"operator"`
+	ColumnDefinition *proto.ColumnDefinition `json:"-"`
+}
+type QualOperator struct {
+	Op   string  `json:"op"`
+	Cost float64 `json:"cost"`
 }
 
 type PluginTable struct {
@@ -40,11 +44,28 @@ type PluginTable struct {
 	tableSchema *proto.TableSchema
 }
 
+func (p *PluginTable) getLimit(info *sqlite.IndexInfoInput) (limit *QueryLimit) {
+	// fmt.Println("table.getLimit")
+	// defer fmt.Println("end table.getLimit")
+
+	for idx, ic := range info.Constraints {
+		if ic.Op == sqlite.ConstraintOp(SQLITE_INDEX_CONSTRAINT_LIMIT) {
+			// sqlite passes LIMIT as a constraint (sort of makes sense)
+			// use it
+			limit = &QueryLimit{
+				Idx: idx,
+			}
+			break
+		}
+	}
+	return limit
+}
+
 // if there are unusable constraints on any of start, stop, or step then
 // this plan is unusable and the xBestIndex method should return a SQLITE_CONSTRAINT error.
 func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoOutput, error) {
-	fmt.Println("table.BestIndex")
-	defer fmt.Println("end table.BestIndex")
+	// fmt.Println("table.BestIndex")
+	// defer fmt.Println("end table.BestIndex")
 
 	qc := &QueryContext{
 		Columns: p.getColumnsFromIndexInfo(info),
@@ -78,20 +99,21 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 			continue
 		}
 
-		if cost, usable := p.getConstraintCost(ic); usable {
-			if cost < output.EstimatedCost {
-				output.EstimatedCost = cost
-			}
-			output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
-				Omit:      false,
-				ArgvIndex: idx + 1, // according to https://www.sqlite.org/vtab.html, this should be 1-indexed
-			}
-			pluginOperator, _ := mapSqliteOpToPluginOpAndCost(ic.Op)
-			qc.Quals = append(qc.Quals, &Qual{
-				FieldName: p.tableSchema.Columns[ic.ColumnIndex].GetName(),
-				Operator:  pluginOperator,
-			})
+		cost := p.getConstraintCost(ic)
+		if cost < output.EstimatedCost {
+			output.EstimatedCost = cost
 		}
+		output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
+			Omit:      false,
+			ArgvIndex: idx + 1, // according to https://www.sqlite.org/vtab.html, this should be 1-indexed
+		}
+		qualOperator := getPluginOperator(ic.Op)
+		qc.Quals = append(qc.Quals, &Qual{
+			FieldName:        p.tableSchema.Columns[ic.ColumnIndex].GetName(),
+			Operator:         qualOperator.Op,
+			ColumnDefinition: p.tableSchema.Columns[ic.ColumnIndex],
+		})
+
 	}
 
 	qcBytes, err := json.Marshal(qc)
@@ -101,22 +123,18 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 	}
 	output.IndexString = string(qcBytes)
 
-	fmt.Println(output)
-
 	return output, nil
 }
 
-func (p *PluginTable) getConstraintCost(ic *sqlite.IndexConstraint) (cost float64, usable bool) {
-	fmt.Println("table.constraintCost")
-	defer fmt.Println("end table.constraintCost")
+func (p *PluginTable) getConstraintCost(ic *sqlite.IndexConstraint) (cost float64) {
+	// fmt.Println("table.constraintCost")
+	// defer fmt.Println("end table.constraintCost")
 
 	if !ic.Usable {
-		return math.MaxFloat64, false
+		return math.MaxFloat64
 	}
 	schemaColumn := p.tableSchema.Columns[ic.ColumnIndex]
-	fmt.Println("schemaColumn:", schemaColumn)
 	sqliteOp := ic.Op
-	fmt.Println("sqliteOp:", sqliteOp)
 
 	// is this a usable key column?
 	for _, keyColumn := range p.tableSchema.GetAllKeyColumns() {
@@ -127,43 +145,33 @@ func (p *PluginTable) getConstraintCost(ic *sqlite.IndexConstraint) (cost float6
 
 		// does this key column support this operator?
 		for _, operator := range keyColumn.Operators {
-			if op, cost := mapSqliteOpToPluginOpAndCost(sqliteOp); op == operator {
-				fmt.Println("found operator:", op, cost)
-				return cost, true
+			if qualOp := getPluginOperator(sqliteOp); qualOp.Op == operator {
+				return cost
 			}
 		}
 	}
 
 	// this can be used, but with a high cost
-	return math.MaxFloat64, true
+	return math.MaxFloat64
 }
 
 func (p *PluginTable) Open() (sqlite.VirtualCursor, error) {
-	fmt.Println("table.Open")
-	defer fmt.Println("end table.Open")
+	// fmt.Println("table.Open")
+	// defer fmt.Println("end table.Open")
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-
-	cursor := &PluginCursor{
-		cursorCancel: cancel,
-		stream:       plugin.NewLocalPluginStream(ctx),
-		currentRow:   0,
-		currentItem:  make(map[string]*proto.Column),
-		table:        p,
-	}
+	cursor := NewPluginCursor(context.Background(), p)
 	return cursor, nil
 }
 
 func (p *PluginTable) Disconnect() error {
-	fmt.Println("table.Disconnect")
-	defer fmt.Println("end table.Disconnect")
+	// fmt.Println("table.Disconnect")
+	// defer fmt.Println("end table.Disconnect")
 	return nil
 }
 
 func (p *PluginTable) Destroy() error {
-	fmt.Println("table.Destroy")
-	defer fmt.Println("end table.Destroy")
+	// fmt.Println("table.Destroy")
+	// defer fmt.Println("end table.Destroy")
 	return nil
 }
 

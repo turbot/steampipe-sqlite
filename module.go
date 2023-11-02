@@ -9,11 +9,11 @@ import (
 
 type Module struct {
 	tableName   string
-	columns     SqliteColumns
+	columns     SQLiteColumns
 	tableSchema *proto.TableSchema
 }
 
-func NewModule(tableName string, columns SqliteColumns, tableSchema *proto.TableSchema) *Module {
+func NewModule(tableName string, columns SQLiteColumns, tableSchema *proto.TableSchema) *Module {
 	return &Module{
 		tableName:   tableName,
 		columns:     columns,

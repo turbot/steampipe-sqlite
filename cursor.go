@@ -10,12 +10,26 @@ import (
 	"go.riyazali.net/sqlite"
 )
 
+// PluginCursor implements the sqlite/virtual_table.Cursor interface.
+// It is used to allow the SQLite core to interact with the virtual table and retrieve rows.
 type PluginCursor struct {
 	cursorCancel context.CancelFunc
 	currentRow   int64
 	stream       *plugin.LocalPluginStream
 	currentItem  map[string]*proto.Column
 	table        *PluginTable
+}
+
+// NewPluginCursor creates a new cursor for a plugin table.
+func NewPluginCursor(ctx context.Context, table *PluginTable) *PluginCursor {
+	_, cancel := context.WithCancel(ctx)
+	return &PluginCursor{
+		table:        table,
+		stream:       plugin.NewLocalPluginStream(ctx),
+		cursorCancel: cancel,
+		currentRow:   0,
+		currentItem:  make(map[string]*proto.Column),
+	}
 }
 
 // Filter is called by SQLite to restrict the number of rows returned by the virtual table.
@@ -39,7 +53,7 @@ func (p *PluginCursor) Filter(indexNumber int, indexString string, values ...sql
 	}
 
 	p.currentRow = 0
-	return nil
+	return p.Next()
 }
 
 // Next is called by SQLite to advance the cursor to the next row in the result set.
@@ -125,11 +139,19 @@ func (p *PluginCursor) Close() error {
 }
 
 func (p *PluginCursor) buildQueryContext(_ int, idxStr string, values ...sqlite.Value) (*QueryContext, error) {
+	fmt.Println("cursor.buildQueryContext")
+	defer fmt.Println("end cursor.buildQueryContext")
+
 	qc := new(QueryContext)
 	if err := json.Unmarshal([]byte(idxStr), qc); err != nil {
 		return nil, err
 	}
 
+	p.extractLimit(qc, values...)
+
+	return qc, nil
+}
+func (p *PluginCursor) extractLimit(qc *QueryContext, values ...sqlite.Value) {
 	if qc.Limit != nil {
 		// get the value at the given index
 		v := values[qc.Limit.Idx]
@@ -141,11 +163,12 @@ func (p *PluginCursor) buildQueryContext(_ int, idxStr string, values ...sqlite.
 			qc.Limit = nil
 		}
 	}
-
-	return qc, nil
 }
 
 func (p *PluginCursor) buildQualMap(qc *QueryContext, values ...sqlite.Value) map[string]*proto.Quals {
+	// fmt.Println("cursor.buildQualMap")
+	// defer fmt.Println("end cursor.buildQualMap")
+
 	// build the qual map
 	qualMap := make(map[string]*proto.Quals)
 	for i, qual := range qc.Quals {
@@ -154,7 +177,7 @@ func (p *PluginCursor) buildQualMap(qc *QueryContext, values ...sqlite.Value) ma
 				{
 					FieldName: qual.FieldName,
 					Operator:  &proto.Qual_StringValue{StringValue: qual.Operator},
-					Value:     getMappedQual(values[i]),
+					Value:     getMappedQualValue(values[i], qual),
 				},
 			},
 		}
