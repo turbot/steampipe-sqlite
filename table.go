@@ -87,7 +87,7 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 
 		if ic.Op == sqlite.ConstraintOp(SQLITE_INDEX_CONSTRAINT_LIMIT) {
 			// sqlite passes LIMIT as a constraint (sort of makes sense)
-			// use it
+			// lets use it
 			limit := &QueryLimit{
 				Idx: idx,
 			}
@@ -113,7 +113,6 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 			Operator:         qualOperator.Op,
 			ColumnDefinition: p.tableSchema.Columns[ic.ColumnIndex],
 		})
-
 	}
 
 	qcBytes, err := json.Marshal(qc)
