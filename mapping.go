@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"go.riyazali.net/sqlite"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type SQLiteColumn struct {
@@ -102,9 +104,16 @@ func getMappedStringValue(v string, q *Qual) *proto.QualValue {
 		return &proto.QualValue{Value: &proto.QualValue_LtreeValue{LtreeValue: v}}
 	case proto.ColumnType_JSON:
 		return &proto.QualValue{Value: &proto.QualValue_JsonbValue{JsonbValue: v}}
-	default:
-		return &proto.QualValue{Value: &proto.QualValue_StringValue{StringValue: v}}
+	case proto.ColumnType_DATETIME, proto.ColumnType_TIMESTAMP:
+		if timestamp, err := time.Parse(SQLITE_TIMESTAMP_FORMAT, v); err == nil {
+			return &proto.QualValue{
+				Value: &proto.QualValue_TimestampValue{
+					TimestampValue: timestamppb.New(timestamp),
+				},
+			}
+		}
 	}
+	return &proto.QualValue{Value: &proto.QualValue_StringValue{StringValue: v}}
 }
 
 // getMappedIntValue converts an int64 to a proto.QualValue
