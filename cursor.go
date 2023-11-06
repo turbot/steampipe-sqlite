@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
@@ -36,8 +35,8 @@ func NewPluginCursor(ctx context.Context, table *PluginTable) *PluginCursor {
 // The implementation of this method should store the filter expression in the cursor object
 // and then call Next() to advance the cursor to the first row that matches the filter.
 func (p *PluginCursor) Filter(indexNumber int, indexString string, values ...sqlite.Value) error {
-	fmt.Println("cursor.Filter:", indexNumber, indexString, values)
-	defer fmt.Println("end cursor.Filter:", indexNumber, indexString, values)
+	// log.Println("cursor.Filter:", indexNumber, indexString, values)
+	// defer log.Println("end cursor.Filter:", indexNumber, indexString, values)
 
 	queryCtx, err := p.buildQueryContext(indexNumber, indexString, values...)
 	if err != nil {
@@ -53,15 +52,15 @@ func (p *PluginCursor) Filter(indexNumber int, indexString string, values ...sql
 	}
 
 	p.currentRow = 0
-	return p.Next()
+	return nil
 }
 
 // Next is called by SQLite to advance the cursor to the next row in the result set.
 // If an error occurs while advancing the cursor, this method should return an appropriate
 // error code.
 func (p *PluginCursor) Next() error {
-	fmt.Println("cursor.Next")
-	defer fmt.Println("end cursor.Next")
+	// log.Println("cursor.Next")
+	// defer log.Println("end cursor.Next")
 	item, err := p.stream.Recv()
 	if err != nil {
 		return err
@@ -79,8 +78,8 @@ func (p *PluginCursor) Next() error {
 
 // Rowid is called by SQLite to retrieve the rowid for the current row.
 func (p *PluginCursor) Rowid() (int64, error) {
-	fmt.Println("cursor.RowId")
-	defer fmt.Println("end cursor.RowId")
+	// log.Println("cursor.RowId")
+	// defer log.Println("end cursor.RowId")
 	return p.currentRow, nil
 }
 
@@ -107,8 +106,7 @@ func (p *PluginCursor) Column(context *sqlite.VirtualTableContext, columnIdx int
 		context.ResultText(string(p.currentItem[column.Name].GetJsonValue()))
 		context.ResultSubType(74) // 74 is JSON as per https://github.com/riyaz-ali/sqlite/blob/master/docs/RECIPES.md#json
 	case proto.ColumnType_DATETIME, proto.ColumnType_TIMESTAMP:
-		sqliteTimestampFormat := "2006-01-02 15:04:05.999"
-		context.ResultText(p.currentItem[column.Name].GetTimestampValue().AsTime().Format(sqliteTimestampFormat))
+		context.ResultText(p.currentItem[column.Name].GetTimestampValue().AsTime().Format(SQLITE_TIMESTAMP_FORMAT))
 	case proto.ColumnType_IPADDR:
 		context.ResultText(p.currentItem[column.Name].GetIpAddrValue())
 	case proto.ColumnType_CIDR:
@@ -124,34 +122,35 @@ func (p *PluginCursor) Column(context *sqlite.VirtualTableContext, columnIdx int
 
 // Eof is called by SQLite to determine if the cursor has reached the end of the result set.
 func (p *PluginCursor) Eof() bool {
-	fmt.Println("cursor.Eof")
-	defer fmt.Println("end cursor.Eof")
+	// log.Println("cursor.Eof")
+	// defer log.Println("end cursor.Eof")
 	return p.currentRow < 0
 }
 
 // Close is called by SQLite to close the cursor.
 // This method should release any resources held by the cursor.
 func (p *PluginCursor) Close() error {
-	fmt.Println("cursor.Close")
-	defer fmt.Println("end cursor.Close")
+	// log.Println("cursor.Close")
+	// defer log.Println("end cursor.Close")
 	p.cursorCancel()
 	return nil
 }
 
 func (p *PluginCursor) buildQueryContext(_ int, idxStr string, values ...sqlite.Value) (*QueryContext, error) {
-	fmt.Println("cursor.buildQueryContext")
-	defer fmt.Println("end cursor.buildQueryContext")
+	// log.Println("cursor.buildQueryContext")
+	// defer log.Println("end cursor.buildQueryContext")
 
 	qc := new(QueryContext)
 	if err := json.Unmarshal([]byte(idxStr), qc); err != nil {
 		return nil, err
 	}
 
-	p.extractLimit(qc, values...)
+	p.extractLimitForQueryContext(qc, values...)
 
 	return qc, nil
 }
-func (p *PluginCursor) extractLimit(qc *QueryContext, values ...sqlite.Value) {
+
+func (p *PluginCursor) extractLimitForQueryContext(qc *QueryContext, values ...sqlite.Value) {
 	if qc.Limit != nil {
 		// get the value at the given index
 		v := values[qc.Limit.Idx]
@@ -166,8 +165,8 @@ func (p *PluginCursor) extractLimit(qc *QueryContext, values ...sqlite.Value) {
 }
 
 func (p *PluginCursor) buildQualMap(qc *QueryContext, values ...sqlite.Value) map[string]*proto.Quals {
-	// fmt.Println("cursor.buildQualMap")
-	// defer fmt.Println("end cursor.buildQualMap")
+	// log.Println("cursor.buildQualMap")
+	// defer log.Println("end cursor.buildQualMap")
 
 	// build the qual map
 	qualMap := make(map[string]*proto.Quals)
