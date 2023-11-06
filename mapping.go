@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"net"
 	"strings"
 	"time"
 
@@ -100,6 +101,26 @@ func getMappedQualValue(v sqlite.Value, qual *Qual) *proto.QualValue {
 // based on the type of the column definition of the qual
 func getMappedStringValue(v string, q *Qual) *proto.QualValue {
 	switch q.ColumnDefinition.GetType() {
+	case proto.ColumnType_IPADDR, proto.ColumnType_INET:
+		if ip := net.ParseIP(v); ip != nil {
+			return &proto.QualValue{
+				Value: &proto.QualValue_InetValue{
+					InetValue: &proto.Inet{
+						Addr: ip.String(),
+					},
+				},
+			}
+		}
+	case proto.ColumnType_CIDR:
+		if _, _, err := net.ParseCIDR(v); err == nil {
+			return &proto.QualValue{
+				Value: &proto.QualValue_InetValue{
+					InetValue: &proto.Inet{
+						Cidr: v,
+					},
+				},
+			}
+		}
 	case proto.ColumnType_LTREE:
 		return &proto.QualValue{Value: &proto.QualValue_LtreeValue{LtreeValue: v}}
 	case proto.ColumnType_JSON:
