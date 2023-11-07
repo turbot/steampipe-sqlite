@@ -79,7 +79,7 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 	}
 
 	for idx, ic := range info.Constraints {
-		fmt.Println(">>>: ", ic.ColumnIndex, ic.Op, ic.Usable)
+		// fmt.Println(">>>: ", ic.ColumnIndex, ic.Op, ic.Usable)
 
 		output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
 			Omit: true,
