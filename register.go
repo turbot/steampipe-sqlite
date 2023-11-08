@@ -10,6 +10,7 @@ type CreateVirtualTablesSqliteFunction struct{}
 
 func register() {
 	sqlite.Register(func(api *sqlite.ExtensionApi) (sqlite.ErrorCode, error) {
+		// set a blank config, so that we can fetch the schema from the plugin
 		if err := setConnectionConfig(""); err != nil {
 			return sqlite.SQLITE_ERROR, err
 		}

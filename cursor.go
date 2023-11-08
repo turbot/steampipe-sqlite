@@ -43,7 +43,10 @@ func (p *PluginCursor) Filter(indexNumber int, indexString string, values ...sql
 		return err
 	}
 
-	qualMap := p.buildQualMap(queryCtx, values...)
+	qualMap, err := p.buildQualMap(queryCtx, values...)
+	if err != nil {
+		return err
+	}
 
 	execRequest := buildExecuteRequest(pluginAlias, p.table.name, queryCtx, qualMap)
 
@@ -164,22 +167,26 @@ func (p *PluginCursor) extractLimitForQueryContext(qc *QueryContext, values ...s
 	}
 }
 
-func (p *PluginCursor) buildQualMap(qc *QueryContext, values ...sqlite.Value) map[string]*proto.Quals {
+func (p *PluginCursor) buildQualMap(qc *QueryContext, values ...sqlite.Value) (map[string]*proto.Quals, error) {
 	// log.Println("cursor.buildQualMap")
 	// defer log.Println("end cursor.buildQualMap")
 
 	// build the qual map
 	qualMap := make(map[string]*proto.Quals)
 	for i, qual := range qc.Quals {
+		mappedValue, err := getMappedQualValue(values[i], qual)
+		if err != nil {
+			return nil, err
+		}
 		qualMap[qual.FieldName] = &proto.Quals{
 			Quals: []*proto.Qual{
 				{
 					FieldName: qual.FieldName,
 					Operator:  &proto.Qual_StringValue{StringValue: qual.Operator},
-					Value:     getMappedQualValue(values[i], qual),
+					Value:     mappedValue,
 				},
 			},
 		}
 	}
-	return qualMap
+	return qualMap, nil
 }

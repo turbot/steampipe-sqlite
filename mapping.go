@@ -81,69 +81,75 @@ func getMappedType(in proto.ColumnType) string {
 
 // getMappedQualValue converts a sqlite.Value to a proto.QualValue
 // based on the type of the column definition of the qual
-func getMappedQualValue(v sqlite.Value, qual *Qual) *proto.QualValue {
+func getMappedQualValue(v sqlite.Value, qual *Qual) (*proto.QualValue, error) {
 	switch v.Type() {
 	case sqlite.SQLITE_INTEGER:
 		return getMappedIntValue(v.Int64(), qual)
 	case sqlite.SQLITE_TEXT:
 		return getMappedStringValue(v.Text(), qual)
 	case sqlite.SQLITE_FLOAT:
-		return &proto.QualValue{Value: &proto.QualValue_DoubleValue{DoubleValue: v.Float()}}
+		return &proto.QualValue{Value: &proto.QualValue_DoubleValue{DoubleValue: v.Float()}}, nil
 	case sqlite.SQLITE_NULL:
-		return &proto.QualValue{Value: nil}
+		return &proto.QualValue{Value: nil}, nil
 	default:
 		// default to a string
-		return &proto.QualValue{Value: &proto.QualValue_StringValue{StringValue: v.Text()}}
+		return &proto.QualValue{Value: &proto.QualValue_StringValue{StringValue: v.Text()}}, nil
 	}
 }
 
 // getMappedStringValue converts a string to a proto.QualValue
 // based on the type of the column definition of the qual
-func getMappedStringValue(v string, q *Qual) *proto.QualValue {
+func getMappedStringValue(v string, q *Qual) (*proto.QualValue, error) {
 	switch q.ColumnDefinition.GetType() {
 	case proto.ColumnType_IPADDR, proto.ColumnType_INET:
-		if ip := net.ParseIP(v); ip != nil {
+		ip := net.ParseIP(v)
+		if ip != nil {
 			return &proto.QualValue{
 				Value: &proto.QualValue_InetValue{
 					InetValue: &proto.Inet{
 						Addr: ip.String(),
 					},
 				},
-			}
+			}, nil
 		}
+		return nil, fmt.Errorf("could not parse '%s' as IP ADDR", v)
 	case proto.ColumnType_CIDR:
-		if _, _, err := net.ParseCIDR(v); err == nil {
-			return &proto.QualValue{
-				Value: &proto.QualValue_InetValue{
-					InetValue: &proto.Inet{
-						Cidr: v,
-					},
-				},
-			}
+		_, _, err := net.ParseCIDR(v)
+		if err == nil {
+			return nil, err
 		}
+		return &proto.QualValue{
+			Value: &proto.QualValue_InetValue{
+				InetValue: &proto.Inet{
+					Cidr: v,
+				},
+			},
+		}, nil
 	case proto.ColumnType_LTREE:
-		return &proto.QualValue{Value: &proto.QualValue_LtreeValue{LtreeValue: v}}
+		return &proto.QualValue{Value: &proto.QualValue_LtreeValue{LtreeValue: v}}, nil
 	case proto.ColumnType_JSON:
-		return &proto.QualValue{Value: &proto.QualValue_JsonbValue{JsonbValue: v}}
+		return &proto.QualValue{Value: &proto.QualValue_JsonbValue{JsonbValue: v}}, nil
 	case proto.ColumnType_DATETIME, proto.ColumnType_TIMESTAMP:
-		if timestamp, err := time.Parse(SQLITE_TIMESTAMP_FORMAT, v); err == nil {
-			return &proto.QualValue{
-				Value: &proto.QualValue_TimestampValue{
-					TimestampValue: timestamppb.New(timestamp),
-				},
-			}
+		timestamp, err := time.Parse(SQLITE_TIMESTAMP_FORMAT, v)
+		if err != nil {
+			return nil, err
 		}
+		return &proto.QualValue{
+			Value: &proto.QualValue_TimestampValue{
+				TimestampValue: timestamppb.New(timestamp),
+			},
+		}, nil
 	}
-	return &proto.QualValue{Value: &proto.QualValue_StringValue{StringValue: v}}
+	return &proto.QualValue{Value: &proto.QualValue_StringValue{StringValue: v}}, nil
 }
 
 // getMappedIntValue converts an int64 to a proto.QualValue
 // based on the type of the column definition of the qual
-func getMappedIntValue(v int64, q *Qual) *proto.QualValue {
+func getMappedIntValue(v int64, q *Qual) (*proto.QualValue, error) {
 	switch q.ColumnDefinition.GetType() {
 	case proto.ColumnType_BOOL:
-		return &proto.QualValue{Value: &proto.QualValue_BoolValue{BoolValue: v != 0}}
+		return &proto.QualValue{Value: &proto.QualValue_BoolValue{BoolValue: v != 0}}, nil
 	default:
-		return &proto.QualValue{Value: &proto.QualValue_Int64Value{Int64Value: v}}
+		return &proto.QualValue{Value: &proto.QualValue_Int64Value{Int64Value: v}}, nil
 	}
 }
