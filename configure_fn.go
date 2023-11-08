@@ -31,7 +31,7 @@ func (m *ConfigureFn) Apply(ctx *sqlite.Context, values ...sqlite.Value) {
 	}
 
 	// Set Connection Config
-	err = setConnectionConfig(config)
+	err = m.setConnectionConfig(config)
 	if err != nil {
 		ctx.ResultError(err)
 		return
@@ -51,7 +51,7 @@ func (m *ConfigureFn) getConfig(values ...sqlite.Value) (config string, err erro
 }
 
 // setConnectionConfig sets the connection config for the plugin
-func setConnectionConfig(config string) error {
+func (m *ConfigureFn) setConnectionConfig(config string) error {
 	pluginName := fmt.Sprintf("steampipe-plugin-%s", pluginAlias)
 
 	c := &proto.ConnectionConfig{
@@ -62,10 +62,14 @@ func setConnectionConfig(config string) error {
 		PluginInstance:  pluginName,
 	}
 
+	// send an update request to the plugin server
+	// we should also trigger a schema refresh after this call
+	// reason we update is because we have already setup this plugin with a blank config
+	// during bootstrap - so that we have all the tables setup
 	cs := []*proto.ConnectionConfig{c}
-	req := &proto.SetAllConnectionConfigsRequest{Configs: cs}
+	req := &proto.UpdateConnectionConfigsRequest{Changed: cs}
+	_, err := pluginServer.UpdateConnectionConfigs(req)
 
-	_, err := pluginServer.SetAllConnectionConfigs(req)
 	return err
 }
 
