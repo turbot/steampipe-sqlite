@@ -7,11 +7,10 @@ import (
 	"go.riyazali.net/sqlite"
 )
 
-type CreateVirtualTablesSqliteFunction struct{}
+var currentSchema *proto.Schema
 
 func register() {
 	sqlite.Register(func(api *sqlite.ExtensionApi) (sqlite.ErrorCode, error) {
-		// set a blank config, so that we can fetch the schema from the plugin
 		if err := setInitialConfig(); err != nil {
 			return sqlite.SQLITE_ERROR, err
 		}
@@ -19,8 +18,12 @@ func register() {
 		if err != nil {
 			return sqlite.SQLITE_ERROR, err
 		}
-		if err := setupSchemaTables(schema, api); err != nil {
-			return sqlite.SQLITE_ERROR, err
+		if schema.Mode == SCHEMA_MODE_STATIC {
+			// create the tables for a plugin with static schema
+			if err := setupSchemaTables(schema, api); err != nil {
+				return sqlite.SQLITE_ERROR, err
+			}
+			currentSchema = schema
 		}
 
 		configureFn := NewConfigureFn(api)

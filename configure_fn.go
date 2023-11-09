@@ -43,10 +43,15 @@ func (m *ConfigureFn) getConfig(values ...sqlite.Value) (config string, err erro
 	if len(values) > 1 {
 		return "", errors.New("expected a single argument")
 	}
-	if values[0].Type() != sqlite.SQLITE_TEXT {
-		return "", (errors.New("expected a string argument"))
+
+	switch {
+	case values[0].Type() == sqlite.SQLITE_TEXT:
+		config = values[0].Text()
+	case values[0].Type() == sqlite.SQLITE_BLOB:
+		config = string(values[0].Blob())
+	default:
+		return "", (errors.New("expected a TEXT or BLOB argument"))
 	}
-	config = values[0].Text()
 	return config, nil
 }
 
@@ -69,6 +74,35 @@ func (m *ConfigureFn) setConnectionConfig(config string) error {
 	cs := []*proto.ConnectionConfig{c}
 	req := &proto.UpdateConnectionConfigsRequest{Changed: cs}
 	_, err := pluginServer.UpdateConnectionConfigs(req)
+	if err != nil {
+		return err
+	}
+
+	// fetch the schema
+	// we cannot use the global currentSchema variable here
+	// because it may not have been loaded yet at all
+	schema, err := getSchema()
+	if err != nil {
+		return err
+	}
+
+	if currentSchema.Mode == SCHEMA_MODE_DYNAMIC {
+		// drop the existing tables - if they have been created
+		if currentSchema != nil {
+			conn := m.api.Connection()
+			for tableName := range currentSchema.GetSchema() {
+				if err := conn.Exec(fmt.Sprintf("DROP TABLE %s", tableName), nil); err != nil {
+					return err
+				}
+			}
+		}
+
+		// create the tables for a dynamic schema
+		if err := setupSchemaTables(schema, m.api); err != nil {
+			return err
+		}
+		currentSchema = schema
+	}
 
 	return err
 }
