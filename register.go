@@ -8,27 +8,31 @@ import (
 )
 
 var currentSchema *proto.Schema
+var schemaType = SCHEMA_MODE_STATIC
 
 func register() {
 	sqlite.Register(func(api *sqlite.ExtensionApi) (sqlite.ErrorCode, error) {
-		if err := setInitialConfig(); err != nil {
+		configureFn := NewConfigureFn(api)
+		if err := api.CreateFunction(fmt.Sprintf("configure_%s", pluginAlias), configureFn); err != nil {
 			return sqlite.SQLITE_ERROR, err
+		}
+
+		if err := setInitialConfig(); err != nil {
+			// if this errors, don't try to fetch the schema
+			// assume that this is a dynamic plugin and that we
+			// cannot just set a blank config
+			return sqlite.SQLITE_OK, nil
 		}
 		schema, err := getSchema()
 		if err != nil {
 			return sqlite.SQLITE_ERROR, err
 		}
-		if schema.Mode == SCHEMA_MODE_STATIC {
+		if SCHEMA_MODE_STATIC.Equals(schema.Mode) {
 			// create the tables for a plugin with static schema
 			if err := setupSchemaTables(schema, api); err != nil {
 				return sqlite.SQLITE_ERROR, err
 			}
 			currentSchema = schema
-		}
-
-		configureFn := NewConfigureFn(api)
-		if err := api.CreateFunction(fmt.Sprintf("configure_%s", pluginAlias), configureFn); err != nil {
-			return sqlite.SQLITE_ERROR, err
 		}
 
 		return sqlite.SQLITE_OK, nil
