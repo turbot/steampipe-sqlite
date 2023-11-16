@@ -56,14 +56,14 @@ func getPluginOperator(op sqlite.ConstraintOp) *QualOperator {
 
 // getSQLiteColumnsFromTableSchema converts a proto.TableSchema to a SQLiteColumns
 // which can be used to create a SQLite table
-func getSQLiteColumnsFromTableSchema(ts *proto.TableSchema) (SQLiteColumns, error) {
+func getSQLiteColumnsFromTableSchema(ts *proto.TableSchema) SQLiteColumns {
 	cols := ts.Columns
 	var out SQLiteColumns
 
 	for _, col := range cols {
 		out = append(out, SQLiteColumn{Name: col.Name, Type: getMappedType(col.Type)})
 	}
-	return out, nil
+	return out
 }
 
 // getMappedType converts a proto.ColumnType to a SQLite type

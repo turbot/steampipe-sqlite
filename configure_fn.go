@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"go.riyazali.net/sqlite"
@@ -23,8 +24,12 @@ func NewConfigureFn(api *sqlite.ExtensionApi) *ConfigureFn {
 func (m *ConfigureFn) Args() int           { return 1 }
 func (m *ConfigureFn) Deterministic() bool { return true }
 func (m *ConfigureFn) Apply(ctx *sqlite.Context, values ...sqlite.Value) {
+	log.Println("[TRACE] ConfigureFn.Apply start")
+	defer log.Println("[TRACE] ConfigureFn.Apply end")
+
 	var config string
 	var err error
+	log.Println("[TRACE] getting config")
 	if config, err = m.getConfig(values...); err != nil {
 		ctx.ResultError(err)
 		return
@@ -40,6 +45,9 @@ func (m *ConfigureFn) Apply(ctx *sqlite.Context, values ...sqlite.Value) {
 
 // getConfig returns the config string from the first argument
 func (m *ConfigureFn) getConfig(values ...sqlite.Value) (config string, err error) {
+	log.Println("[TRACE] ConfigureFn.getConfig start")
+	defer log.Println("[TRACE] ConfigureFn.getConfig end")
+
 	if len(values) > 1 {
 		return "", errors.New("expected a single argument")
 	}
@@ -57,6 +65,9 @@ func (m *ConfigureFn) getConfig(values ...sqlite.Value) (config string, err erro
 
 // setConnectionConfig sets the connection config for the plugin
 func (m *ConfigureFn) setConnectionConfig(config string) error {
+	log.Println("[TRACE] ConfigureFn.setConnectionConfig start")
+	defer log.Println("[TRACE] ConfigureFn.setConnectionConfig end")
+
 	pluginName := fmt.Sprintf("steampipe-plugin-%s", pluginAlias)
 
 	c := &proto.ConnectionConfig{
@@ -68,6 +79,7 @@ func (m *ConfigureFn) setConnectionConfig(config string) error {
 	}
 
 	if currentSchema != nil {
+		log.Println("[TRACE] ConfigureFn.setConnectionConfig: updating connection config")
 		// send an update request to the plugin server
 		cs := []*proto.ConnectionConfig{c}
 		req := &proto.UpdateConnectionConfigsRequest{Changed: cs}
@@ -76,18 +88,19 @@ func (m *ConfigureFn) setConnectionConfig(config string) error {
 			return err
 		}
 	} else {
+		log.Println("[TRACE] ConfigureFn.setConnectionConfig: setting connection config")
 		// set the config in the plugin server
 		cs := []*proto.ConnectionConfig{c}
-		req := &proto.SetAllConnectionConfigsRequest{Configs: cs}
+		req := &proto.SetAllConnectionConfigsRequest{
+			Configs:        cs,
+			MaxCacheSizeMb: 32,
+		}
 		_, err := pluginServer.SetAllConnectionConfigs(req)
 		if err != nil {
 			return err
 		}
 	}
 
-	// we should also trigger a schema refresh after this call
-	// reason we update is because we have already setup this plugin with a blank config
-	// during bootstrap - so that we have all the tables setup
 	// fetch the schema
 	// we cannot use the global currentSchema variable here
 	// because it may not have been loaded yet at all
@@ -96,19 +109,17 @@ func (m *ConfigureFn) setConnectionConfig(config string) error {
 		return err
 	}
 
+	log.Println("[TRACE] ConfigureFn.setConnectionConfig: schema fetched successfully")
+
+	// we should also trigger a schema refresh after this call for dynamic backends
 	if SCHEMA_MODE_DYNAMIC.Equals(schema.Mode) {
 		// drop the existing tables - if they have been created
-		if currentSchema != nil {
-			conn := m.api.Connection()
-			for tableName := range currentSchema.GetSchema() {
-				if err := conn.Exec(fmt.Sprintf("DROP TABLE %s", tableName), nil); err != nil {
-					return err
-				}
-			}
+		if err := m.dropCurrent(); err != nil {
+			return err
 		}
 
-		// create the tables for a dynamic schema
-		if err := setupSchemaTables(schema, m.api); err != nil {
+		// create the tables for the new dynamic schema
+		if err := setupTables(schema, m.api); err != nil {
 			return err
 		}
 		currentSchema = schema
@@ -117,8 +128,31 @@ func (m *ConfigureFn) setConnectionConfig(config string) error {
 	return err
 }
 
+func (m *ConfigureFn) dropCurrent() error {
+	if currentSchema != nil {
+		sqlite.Register(func(api *sqlite.ExtensionApi) (sqlite.ErrorCode, error) {
+			conn := api.Connection()
+			for tableName := range currentSchema.GetSchema() {
+				log.Println("[TRACE] ConfigureFn.dropCurrent: dropping table", tableName)
+				q := fmt.Sprintf("DROP TABLE %s", tableName)
+				log.Println("[TRACE] ConfigureFn.dropCurrent: executing query", q)
+				err := conn.Exec(q, nil)
+				if err != nil {
+					log.Println("[ERROR] ConfigureFn.dropCurrent: error dropping table", tableName, err)
+					return sqlite.SQLITE_ERROR, err
+				}
+			}
+			return sqlite.SQLITE_OK, nil
+		})
+	}
+	return nil
+}
+
 // getSchema returns the schema for the plugin
 func getSchema() (*proto.Schema, error) {
+	log.Println("[TRACE] getSchema start")
+	defer log.Println("[TRACE] getSchema end")
+
 	// Get Plugin Schema
 	sRequest := &proto.GetSchemaRequest{Connection: pluginAlias}
 	s, err := pluginServer.GetSchema(sRequest)
@@ -128,16 +162,16 @@ func getSchema() (*proto.Schema, error) {
 	return s.GetSchema(), nil
 }
 
-// setupSchemaTables sets up the schema tables for the plugin
+// setupTables sets up the schema tables for the plugin
 // it fetched the schema from the plugin and then maps it to SQLite tables
-func setupSchemaTables(schema *proto.Schema, api *sqlite.ExtensionApi) error {
+func setupTables(schema *proto.Schema, api *sqlite.ExtensionApi) error {
+	log.Println("[TRACE] setupSchemaTables start")
+	defer log.Println("[TRACE] setupSchemaTables end")
+
 	// Iterate Tables & Build Modules
 	for tableName, tableSchema := range schema.GetSchema() {
 		// Translate Schema
-		sc, err := getSQLiteColumnsFromTableSchema(tableSchema)
-		if err != nil {
-			return err
-		}
+		sc := getSQLiteColumnsFromTableSchema(tableSchema)
 
 		current := NewModule(tableName, sc, tableSchema)
 		if err := api.CreateModule(tableName, current, sqlite.ReadOnly(true)); err != nil {

@@ -19,6 +19,8 @@ func buildExecuteRequest(alias, table string, ctx *QueryContext, quals map[strin
 		Table:                 table,
 		QueryContext:          qc,
 		CallId:                grpc.BuildCallId(),
+		CacheEnabled:          true,
+		CacheTtl:              300,
 		Connection:            alias,
 		TraceContext:          nil,
 		ExecuteConnectionData: make(map[string]*proto.ExecuteConnectionData),

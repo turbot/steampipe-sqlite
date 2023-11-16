@@ -11,15 +11,21 @@ var currentSchema *proto.Schema
 var schemaType = SCHEMA_MODE_STATIC
 
 func register() {
+	pluginServer.SetCacheOptions(&proto.SetCacheOptionsRequest{
+		Enabled:   true,
+		Ttl:       300,
+		MaxSizeMb: 32,
+	})
+
 	sqlite.Register(func(api *sqlite.ExtensionApi) (sqlite.ErrorCode, error) {
 		configureFn := NewConfigureFn(api)
 		if err := api.CreateFunction(fmt.Sprintf("configure_%s", pluginAlias), configureFn); err != nil {
 			return sqlite.SQLITE_ERROR, err
 		}
 
-		// if the target plugin has a static schema, then the list of tables and columns
-		// is also static. let's just set it up with a blank config and setup the tables
 		if SCHEMA_MODE_STATIC.Equals(pluginServer.GetSchemaMode()) {
+			// if the target plugin has a static schema, then the list of tables and columns
+			// is also static. let's just set it up with a blank config and setup the tables
 			if err := setInitialConfig(); err != nil {
 				return sqlite.SQLITE_ERROR, err
 			}
@@ -27,7 +33,7 @@ func register() {
 			if err != nil {
 				return sqlite.SQLITE_ERROR, err
 			}
-			if err := setupSchemaTables(schema, api); err != nil {
+			if err := setupTables(schema, api); err != nil {
 				return sqlite.SQLITE_ERROR, err
 			}
 			currentSchema = schema
@@ -50,7 +56,10 @@ func setInitialConfig() error {
 	}
 
 	cs := []*proto.ConnectionConfig{c}
-	req := &proto.SetAllConnectionConfigsRequest{Configs: cs}
+	req := &proto.SetAllConnectionConfigsRequest{
+		Configs:        cs,
+		MaxCacheSizeMb: 32,
+	}
 
 	_, err := pluginServer.SetAllConnectionConfigs(req)
 	return err
