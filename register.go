@@ -17,18 +17,16 @@ func register() {
 			return sqlite.SQLITE_ERROR, err
 		}
 
-		if err := setInitialConfig(); err != nil {
-			// if this errors, don't try to fetch the schema
-			// assume that this is a dynamic plugin and that we
-			// cannot just set a blank config
-			return sqlite.SQLITE_OK, nil
-		}
-		schema, err := getSchema()
-		if err != nil {
-			return sqlite.SQLITE_ERROR, err
-		}
-		if SCHEMA_MODE_STATIC.Equals(schema.Mode) {
-			// create the tables for a plugin with static schema
+		// if the target plugin has a static schema, then the list of tables and columns
+		// is also static. let's just set it up with a blank config and setup the tables
+		if SCHEMA_MODE_STATIC.Equals(pluginServer.GetSchemaMode()) {
+			if err := setInitialConfig(); err != nil {
+				return sqlite.SQLITE_ERROR, err
+			}
+			schema, err := getSchema()
+			if err != nil {
+				return sqlite.SQLITE_ERROR, err
+			}
 			if err := setupSchemaTables(schema, api); err != nil {
 				return sqlite.SQLITE_ERROR, err
 			}

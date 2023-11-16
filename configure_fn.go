@@ -67,17 +67,27 @@ func (m *ConfigureFn) setConnectionConfig(config string) error {
 		PluginInstance:  pluginName,
 	}
 
-	// send an update request to the plugin server
+	if currentSchema != nil {
+		// send an update request to the plugin server
+		cs := []*proto.ConnectionConfig{c}
+		req := &proto.UpdateConnectionConfigsRequest{Changed: cs}
+		_, err := pluginServer.UpdateConnectionConfigs(req)
+		if err != nil {
+			return err
+		}
+	} else {
+		// set the config in the plugin server
+		cs := []*proto.ConnectionConfig{c}
+		req := &proto.SetAllConnectionConfigsRequest{Configs: cs}
+		_, err := pluginServer.SetAllConnectionConfigs(req)
+		if err != nil {
+			return err
+		}
+	}
+
 	// we should also trigger a schema refresh after this call
 	// reason we update is because we have already setup this plugin with a blank config
 	// during bootstrap - so that we have all the tables setup
-	cs := []*proto.ConnectionConfig{c}
-	req := &proto.UpdateConnectionConfigsRequest{Changed: cs}
-	_, err := pluginServer.UpdateConnectionConfigs(req)
-	if err != nil {
-		return err
-	}
-
 	// fetch the schema
 	// we cannot use the global currentSchema variable here
 	// because it may not have been loaded yet at all
@@ -86,7 +96,7 @@ func (m *ConfigureFn) setConnectionConfig(config string) error {
 		return err
 	}
 
-	if currentSchema.Mode == SCHEMA_MODE_DYNAMIC {
+	if SCHEMA_MODE_DYNAMIC.Equals(schema.Mode) {
 		// drop the existing tables - if they have been created
 		if currentSchema != nil {
 			conn := m.api.Connection()
