@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"go.riyazali.net/sqlite"
@@ -19,7 +20,9 @@ func register() {
 
 	sqlite.Register(func(api *sqlite.ExtensionApi) (sqlite.ErrorCode, error) {
 		configureFn := NewConfigureFn(api)
-		if err := api.CreateFunction(fmt.Sprintf("configure_%s", pluginAlias), configureFn); err != nil {
+		fnName := fmt.Sprintf("%s_configure", pluginAlias)
+		fnName = strings.ToLower(fnName)
+		if err := api.CreateFunction(fnName, configureFn); err != nil {
 			return sqlite.SQLITE_ERROR, err
 		}
 
