@@ -1,13 +1,6 @@
 package main
 
 import (
-  "log"
-  "os"
-  "time"
-  "fmt"
-
-	"github.com/hashicorp/go-hclog"
-	"github.com/turbot/steampipe-plugin-sdk/v5/logging"
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 
 	"{{.PluginGithubUrl}}/{{.PluginAlias}}"
@@ -17,26 +10,8 @@ var pluginServer = plugin.Server(&plugin.ServeOpts{PluginFunc: {{.PluginAlias}}.
 var pluginAlias = "{{.PluginAlias}}"
 
 func init() {
-	setupLogger()
+	setupLogger(pluginAlias)
 	register()
-}
-
-func setupLogger() {
-	level := logging.LogLevel()
-	hcLevel := hclog.LevelFromString(level)
-
-	options := &hclog.LoggerOptions{
-		// make the name unique so that logs from this instance can be filtered
-		Name:       fmt.Sprintf("sqlite [%s]", pluginAlias),
-		Level:      hcLevel,
-		Output:     os.Stdout,
-		TimeFn:     func() time.Time { return time.Now().UTC() },
-		TimeFormat: "2006-01-02 15:04:05.000 UTC",
-	}
-	logger := logging.NewLogger(options)
-	log.SetOutput(logger.StandardWriter(&hclog.StandardLoggerOptions{InferLevels: true}))
-	log.SetPrefix("")
-	log.SetFlags(0)
 }
 
 func main() {
