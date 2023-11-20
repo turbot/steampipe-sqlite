@@ -1,21 +1,17 @@
 package main
 
 import (
-	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
-
-	"github.com/turbot/steampipe-plugin-aws/aws"
+	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
+	_ "github.com/turbot/steampipe-plugin-sdk/v5/logging"
 )
 
-var pluginServer = plugin.Server(&plugin.ServeOpts{PluginFunc: aws.Plugin})
-var pluginAlias = "aws"
-
-func init() {
-	setupLogger(pluginAlias)
-	register()
-}
+var pluginServer *grpc.PluginServer
+var pluginAlias string
 
 func main() {
-	// DO NOT USE
-  // this code base is meant to be compiled as a dynamically linked library
-  // the main function only exists to satisfy the go compiler
+	// this main file will be overwritten when the template at ./templates/main.go.tmpl is rendered
+	//
+	// we keep this file here to ensure that the plugin can be built without the template
+	// this allows us to have a compiling go module that dependency trackers can use
+	//
 }
