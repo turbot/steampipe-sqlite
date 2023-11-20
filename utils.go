@@ -5,11 +5,12 @@ import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 )
 
-func BuildExecuteRequest(alias, table string, tableSchema *proto.TableSchema) *proto.ExecuteRequest {
-	var quals map[string]*proto.Quals
-	limit := int64(-1)
-
-	qc := proto.NewQueryContext(tableSchema.GetColumnNames(), quals, limit)
+func buildExecuteRequest(alias, table string, ctx *QueryContext, quals map[string]*proto.Quals) *proto.ExecuteRequest {
+	limitRows := int64(-1)
+	if ctx.Limit != nil {
+		limitRows = ctx.Limit.Rows
+	}
+	qc := proto.NewQueryContext(ctx.Columns, quals, limitRows)
 	ecd := proto.ExecuteConnectionData{
 		Limit:        qc.Limit,
 		CacheEnabled: false,
@@ -18,11 +19,12 @@ func BuildExecuteRequest(alias, table string, tableSchema *proto.TableSchema) *p
 		Table:                 table,
 		QueryContext:          qc,
 		CallId:                grpc.BuildCallId(),
+		CacheEnabled:          true,
+		CacheTtl:              300,
 		Connection:            alias,
 		TraceContext:          nil,
 		ExecuteConnectionData: make(map[string]*proto.ExecuteConnectionData),
 	}
 	req.ExecuteConnectionData[alias] = &ecd
-
 	return &req
 }
