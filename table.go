@@ -85,6 +85,12 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 			Omit: true,
 		}
 
+		if !ic.Usable {
+			log.Println("[TRACE] table.BestIndex constraint not usable")
+			continue
+		}
+
+		log.Println("[TRACE] table.BestIndex constraint is usable")
 		if ic.Op == sqlite.ConstraintOp(SQLITE_INDEX_CONSTRAINT_LIMIT) {
 			// sqlite passes LIMIT as a constraint (sort of makes sense)
 			// lets use it
@@ -129,9 +135,6 @@ func (p *PluginTable) getConstraintCost(ic *sqlite.IndexConstraint) (cost float6
 	// fmt.Println("table.constraintCost")
 	// defer fmt.Println("end table.constraintCost")
 
-	if !ic.Usable {
-		return math.MaxFloat64
-	}
 	schemaColumn := p.tableSchema.Columns[ic.ColumnIndex]
 	sqliteOp := ic.Op
 
