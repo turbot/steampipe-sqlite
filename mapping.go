@@ -21,7 +21,7 @@ type SQLiteColumns []SQLiteColumn
 func (s SQLiteColumns) DeclarationString() string {
 	var out []string
 	for _, c := range s {
-		out = append(out, fmt.Sprintf("%s %s", c.Name, c.Type))
+		out = append(out, fmt.Sprintf("\"%s\" %s", c.Name, c.Type))
 	}
 
 	return strings.Join(out, ", ")
