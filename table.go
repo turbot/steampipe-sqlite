@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
@@ -45,8 +46,8 @@ type PluginTable struct {
 }
 
 func (p *PluginTable) getLimit(info *sqlite.IndexInfoInput) (limit *QueryLimit) {
-	// fmt.Println("table.getLimit")
-	// defer fmt.Println("end table.getLimit")
+	log.Println("[TRACE] table.getLimit")
+	defer log.Println("[TRACE] end table.getLimit")
 
 	for idx, ic := range info.Constraints {
 		if ic.Op == sqlite.ConstraintOp(SQLITE_INDEX_CONSTRAINT_LIMIT) {
@@ -64,8 +65,8 @@ func (p *PluginTable) getLimit(info *sqlite.IndexInfoInput) (limit *QueryLimit) 
 // if there are unusable constraints on any of start, stop, or step then
 // this plan is unusable and the xBestIndex method should return a SQLITE_CONSTRAINT error.
 func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoOutput, error) {
-	// fmt.Println("table.BestIndex")
-	// defer fmt.Println("end table.BestIndex")
+	log.Println("[TRACE] table.BestIndex start")
+	defer log.Println("[TRACE] table.BestIndex end")
 
 	qc := &QueryContext{
 		Columns: p.getColumnsFromIndexInfo(info),
@@ -79,7 +80,7 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 	}
 
 	for idx, ic := range info.Constraints {
-		// fmt.Println(">>>: ", ic.ColumnIndex, ic.Op, ic.Usable)
+		log.Println("[TRACE] table.BestIndex constraint >>>: ", ic.ColumnIndex, ic.Op, ic.Usable)
 
 		output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
 			Omit: true,
@@ -132,11 +133,14 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 }
 
 func (p *PluginTable) getConstraintCost(ic *sqlite.IndexConstraint) (cost float64) {
-	// fmt.Println("table.constraintCost")
-	// defer fmt.Println("end table.constraintCost")
+	log.Println("[TRACE] table.getConstraintCost start")
+	defer log.Println("[TRACE] table.getConstraintCost end")
 
 	schemaColumn := p.tableSchema.Columns[ic.ColumnIndex]
 	sqliteOp := ic.Op
+
+	log.Println("[TRACE] column: ", schemaColumn.GetName())
+	log.Println("[TRACE] sqliteOp: ", sqliteOp)
 
 	// is this a usable key column?
 	for _, keyColumn := range p.tableSchema.GetAllKeyColumns() {
@@ -147,6 +151,7 @@ func (p *PluginTable) getConstraintCost(ic *sqlite.IndexConstraint) (cost float6
 
 		// does this key column support this operator?
 		for _, operator := range keyColumn.Operators {
+			log.Println("[TRACE] operator: ", operator, sqliteOp)
 			if qualOp := getPluginOperator(sqliteOp); qualOp.Op == operator {
 				return cost
 			}
@@ -158,26 +163,31 @@ func (p *PluginTable) getConstraintCost(ic *sqlite.IndexConstraint) (cost float6
 }
 
 func (p *PluginTable) Open() (sqlite.VirtualCursor, error) {
-	// fmt.Println("table.Open")
-	// defer fmt.Println("end table.Open")
+	log.Println("[TRACE] table.Open")
+	defer log.Println("[TRACE] end table.Open")
 
 	cursor := NewPluginCursor(context.Background(), p)
 	return cursor, nil
 }
 
 func (p *PluginTable) Disconnect() error {
-	// fmt.Println("table.Disconnect")
-	// defer fmt.Println("end table.Disconnect")
+	log.Println("[TRACE] table.Disconnect")
+	defer log.Println("[TRACE] end table.Disconnect")
 	return nil
 }
 
 func (p *PluginTable) Destroy() error {
-	// fmt.Println("table.Destroy")
-	// defer fmt.Println("end table.Destroy")
+	log.Println("[TRACE] table.Destroy")
+	defer log.Println("[TRACE] end table.Destroy")
 	return nil
 }
 
 func (p *PluginTable) getColumnsFromIndexInfo(info *sqlite.IndexInfoInput) []string {
+	log.Println("[TRACE] table.getColumnsFromIndexInfo")
+	defer log.Println("[TRACE] end table.getColumnsFromIndexInfo")
+
+	log.Println("[TRACE] table.getColumnsFromIndexInfo info.ColUsed: ", info.ColUsed)
+
 	// get the columns from the index info
 	if info.ColUsed == nil {
 		// no cols used, so return all columns - not sure if this can ever happen

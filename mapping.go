@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"net"
 	"strings"
@@ -29,6 +30,9 @@ func (s SQLiteColumns) DeclarationString() string {
 
 // getPluginOperator converts a sqlite.ConstraintOp to a QualOperator
 func getPluginOperator(op sqlite.ConstraintOp) *QualOperator {
+	log.Println("[TRACE] getPluginOperator start", op)
+	defer log.Println("[TRACE] getPluginOperator end", op)
+
 	cost := &QualOperator{
 		Op:   "NOOP",
 		Cost: math.MaxFloat64,
