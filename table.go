@@ -46,8 +46,8 @@ type PluginTable struct {
 }
 
 func (p *PluginTable) getLimit(info *sqlite.IndexInfoInput) (limit *QueryLimit) {
-	log.Println("[TRACE] table.getLimit")
-	defer log.Println("[TRACE] end table.getLimit")
+	log.Println("[DEBUG] table.getLimit")
+	defer log.Println("[DEBUG] end table.getLimit")
 
 	for idx, ic := range info.Constraints {
 		if ic.Op == sqlite.ConstraintOp(SQLITE_INDEX_CONSTRAINT_LIMIT) {
@@ -65,8 +65,8 @@ func (p *PluginTable) getLimit(info *sqlite.IndexInfoInput) (limit *QueryLimit) 
 // if there are unusable constraints on any of start, stop, or step then
 // this plan is unusable and the xBestIndex method should return a SQLITE_CONSTRAINT error.
 func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoOutput, error) {
-	log.Println("[TRACE] table.BestIndex start")
-	defer log.Println("[TRACE] table.BestIndex end")
+	log.Println("[DEBUG] table.BestIndex start")
+	defer log.Println("[DEBUG] table.BestIndex end")
 
 	qc := &QueryContext{
 		Columns: p.getColumnsFromIndexInfo(info),
@@ -80,18 +80,18 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 	}
 
 	for idx, ic := range info.Constraints {
-		log.Println("[TRACE] table.BestIndex constraint >>>: ", ic.ColumnIndex, ic.Op, ic.Usable)
+		log.Println("[DEBUG] table.BestIndex constraint >>>: ", ic.ColumnIndex, ic.Op, ic.Usable)
 
 		output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
 			Omit: true,
 		}
 
 		if !ic.Usable {
-			log.Println("[TRACE] table.BestIndex constraint not usable")
+			log.Println("[DEBUG] table.BestIndex constraint not usable")
 			continue
 		}
 
-		log.Println("[TRACE] table.BestIndex constraint is usable")
+		log.Println("[DEBUG] table.BestIndex constraint is usable")
 		if ic.Op == sqlite.ConstraintOp(SQLITE_INDEX_CONSTRAINT_LIMIT) {
 			// sqlite passes LIMIT as a constraint (sort of makes sense)
 			// lets use it
@@ -133,14 +133,14 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 }
 
 func (p *PluginTable) getConstraintCost(ic *sqlite.IndexConstraint) (cost float64) {
-	log.Println("[TRACE] table.getConstraintCost start")
-	defer log.Println("[TRACE] table.getConstraintCost end")
+	log.Println("[DEBUG] table.getConstraintCost start")
+	defer log.Println("[DEBUG] table.getConstraintCost end")
 
 	schemaColumn := p.tableSchema.Columns[ic.ColumnIndex]
 	sqliteOp := ic.Op
 
-	log.Println("[TRACE] column: ", schemaColumn.GetName())
-	log.Println("[TRACE] sqliteOp: ", sqliteOp)
+	log.Println("[DEBUG] column: ", schemaColumn.GetName())
+	log.Println("[DEBUG] sqliteOp: ", sqliteOp)
 
 	// is this a usable key column?
 	for _, keyColumn := range p.tableSchema.GetAllKeyColumns() {
@@ -151,7 +151,7 @@ func (p *PluginTable) getConstraintCost(ic *sqlite.IndexConstraint) (cost float6
 
 		// does this key column support this operator?
 		for _, operator := range keyColumn.Operators {
-			log.Println("[TRACE] operator: ", operator, sqliteOp)
+			log.Println("[DEBUG] operator: ", operator, sqliteOp)
 			if qualOp := getPluginOperator(sqliteOp); qualOp.Op == operator {
 				return cost
 			}
@@ -163,30 +163,34 @@ func (p *PluginTable) getConstraintCost(ic *sqlite.IndexConstraint) (cost float6
 }
 
 func (p *PluginTable) Open() (sqlite.VirtualCursor, error) {
-	log.Println("[TRACE] table.Open")
-	defer log.Println("[TRACE] end table.Open")
+	log.Println("[DEBUG] table.Open")
+	defer log.Println("[DEBUG] end table.Open")
 
 	cursor := NewPluginCursor(context.Background(), p)
 	return cursor, nil
 }
 
 func (p *PluginTable) Disconnect() error {
-	log.Println("[TRACE] table.Disconnect")
-	defer log.Println("[TRACE] end table.Disconnect")
+	log.Println("[DEBUG] table.Disconnect")
+	defer log.Println("[DEBUG] end table.Disconnect")
 	return nil
 }
 
 func (p *PluginTable) Destroy() error {
-	log.Println("[TRACE] table.Destroy")
-	defer log.Println("[TRACE] end table.Destroy")
+	log.Println("[DEBUG] table.Destroy")
+	defer log.Println("[DEBUG] end table.Destroy")
 	return nil
 }
 
-func (p *PluginTable) getColumnsFromIndexInfo(info *sqlite.IndexInfoInput) []string {
-	log.Println("[TRACE] table.getColumnsFromIndexInfo")
-	defer log.Println("[TRACE] end table.getColumnsFromIndexInfo")
+func (p *PluginTable) getColumnsFromIndexInfo(info *sqlite.IndexInfoInput) (columns []string) {
+	log.Println("[DEBUG] table.getColumnsFromIndexInfo")
+	defer log.Println("[DEBUG] end table.getColumnsFromIndexInfo")
 
-	log.Println("[TRACE] table.getColumnsFromIndexInfo info.ColUsed: ", info.ColUsed)
+	log.Println("[DEBUG] table.getColumnsFromIndexInfo info.ColUsed: ", *info.ColUsed)
+
+	defer func() {
+		log.Println("[DEBUG] table.getColumnsFromIndexInfo columns: ", columns)
+	}()
 
 	// get the columns from the index info
 	if info.ColUsed == nil {
@@ -199,11 +203,21 @@ func (p *PluginTable) getColumnsFromIndexInfo(info *sqlite.IndexInfoInput) []str
 	// if the 1st bit is set, then the 1st column is used and so on
 	// so we need to iterate over the columns by index and check that
 	// the bit for that index is set
-	// if the 64th bit is set, then any column over 63 is used (need to handle this)
-	columns := []string{}
 	for i, col := range p.tableSchema.GetColumns() {
-		// check if the  bit is set in info.ColUsed
+
+		log.Println("[DEBUG] table.getColumnsFromIndexInfo col: ", col.GetName())
+
+		// check if the bit is set in info.ColUsed
+		// if it is, then this column is used
+		// if it is not, then this column is not used
+		// if the bit is set for the 64th column, then any column over 63 is used
+		// let's just include all of them and rely on the SQLite core to do the rest of the selection
+		if i > 63 && checkKthBitSet(*info.ColUsed, 64) {
+			columns = append(columns, col.GetName())
+			continue
+		}
 		if checkKthBitSet(*info.ColUsed, i) {
+			log.Println("[DEBUG] table.getColumnsFromIndexInfo col used: ", col.GetName())
 			columns = append(columns, col.GetName())
 		}
 	}
@@ -211,6 +225,9 @@ func (p *PluginTable) getColumnsFromIndexInfo(info *sqlite.IndexInfoInput) []str
 }
 
 // checkKthBitSet checks if the kth (0-indexed) bit is set in n
-func checkKthBitSet(n int64, k int) bool {
-	return n&(1<<(k)) == 0
+// if k is more than 63, then it returns true
+func checkKthBitSet(n int64, bitIdxK int) bool {
+	log.Println("[DEBUG] table.checkKthBitSet", n, bitIdxK)
+	defer log.Println("[DEBUG] end table.checkKthBitSet", n, bitIdxK)
+	return n&(1<<bitIdxK) != 0
 }
