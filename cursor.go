@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/turbot/steampipe-plugin-sdk/v5/anywhere"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
-	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 	"go.riyazali.net/sqlite"
 )
 
@@ -14,7 +14,7 @@ import (
 type PluginCursor struct {
 	cursorCancel context.CancelFunc
 	currentRow   int64
-	stream       *plugin.LocalPluginStream
+	stream       *anywhere.LocalPluginStream
 	currentItem  map[string]*proto.Column
 	table        *PluginTable
 }
@@ -24,7 +24,7 @@ func NewPluginCursor(ctx context.Context, table *PluginTable) *PluginCursor {
 	_, cancel := context.WithCancel(ctx)
 	return &PluginCursor{
 		table:        table,
-		stream:       plugin.NewLocalPluginStream(ctx),
+		stream:       anywhere.NewLocalPluginStream(ctx),
 		cursorCancel: cancel,
 		currentRow:   0,
 		currentItem:  make(map[string]*proto.Column),
@@ -50,9 +50,7 @@ func (p *PluginCursor) Filter(indexNumber int, indexString string, values ...sql
 
 	execRequest := buildExecuteRequest(pluginAlias, p.table.name, queryCtx, qualMap)
 
-	if err := pluginServer.CallExecute(execRequest, p.stream); err != nil {
-		return err
-	}
+	pluginServer.CallExecuteAsync(execRequest, p.stream)
 
 	p.currentRow = 0
 	return nil
