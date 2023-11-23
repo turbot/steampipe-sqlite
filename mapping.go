@@ -86,6 +86,8 @@ func getMappedType(in proto.ColumnType) string {
 // getMappedQualValue converts a sqlite.Value to a proto.QualValue
 // based on the type of the column definition of the qual
 func getMappedQualValue(v sqlite.Value, qual *Qual) (*proto.QualValue, error) {
+	log.Println("[DEBUG] getMappedQualValue", v, qual)
+	defer log.Println("[DEBUG] end getMappedQualValue", v, qual)
 	switch v.Type() {
 	case sqlite.SQLITE_INTEGER:
 		return getMappedIntValue(v.Int64(), qual)
@@ -104,6 +106,8 @@ func getMappedQualValue(v sqlite.Value, qual *Qual) (*proto.QualValue, error) {
 // getMappedStringValue converts a string to a proto.QualValue
 // based on the type of the column definition of the qual
 func getMappedStringValue(v string, q *Qual) (*proto.QualValue, error) {
+	log.Println("[DEBUG] getMappedStringValue", v, q)
+	defer log.Println("[DEBUG] end getMappedStringValue", v, q)
 	switch q.ColumnDefinition.GetType() {
 	case proto.ColumnType_IPADDR, proto.ColumnType_INET:
 		ip := net.ParseIP(v)
@@ -150,6 +154,8 @@ func getMappedStringValue(v string, q *Qual) (*proto.QualValue, error) {
 // getMappedIntValue converts an int64 to a proto.QualValue
 // based on the type of the column definition of the qual
 func getMappedIntValue(v int64, q *Qual) (*proto.QualValue, error) {
+	log.Println("[DEBUG] getMappedIntValue", v, q)
+	defer log.Println("[DEBUG] end getMappedIntValue", v, q)
 	switch q.ColumnDefinition.GetType() {
 	case proto.ColumnType_BOOL:
 		return &proto.QualValue{Value: &proto.QualValue_BoolValue{BoolValue: v != 0}}, nil
