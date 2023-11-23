@@ -4,4 +4,4 @@ ifeq ($(shell uname -s),Darwin)
 endif
 
 build:
-	go build -v -x -buildmode=c-shared -o steampipe_sqlite_extension_{{.PluginAlias}}.so
+	go build -buildmode=c-shared -o steampipe_sqlite_extension_{{.Plugin}}.so

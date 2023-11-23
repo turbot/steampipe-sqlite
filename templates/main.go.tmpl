@@ -5,11 +5,11 @@ package main
 import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 
-	"{{.PluginGithubUrl}}/{{.PluginAlias}}"
+	"{{.PluginGithubUrl}}/{{.Plugin}}"
 )
 
-var pluginServer = plugin.Server(&plugin.ServeOpts{PluginFunc: {{.PluginAlias}}.Plugin})
-var pluginAlias = "{{.PluginAlias}}"
+var pluginServer = plugin.Server(&plugin.ServeOpts{PluginFunc: {{.Plugin}}.Plugin})
+var pluginAlias = "{{.Plugin}}"
 
 func init() {
 	setupLogger(pluginAlias)
