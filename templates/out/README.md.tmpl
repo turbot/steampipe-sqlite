@@ -1,25 +1,25 @@
-# Steampipe SQLite Extension {{.PluginAlias}}
+# Steampipe SQLite Extension {{.Plugin}}
 
-This SQLite extensions allows you to query {{.PluginAlias}} using the [Steampipe Plugin](https://{{.PluginGithubUrl}})
+This SQLite extensions allows you to query {{.Plugin}} using the [Steampipe Plugin](https://{{.PluginGithubUrl}})
 
 ## Prerequisites
 - A build of SQLite that supports extensions, you can verify this by opening SQLite and ensuring `.help` displays a `.load command`.
   - If required you can [download](https://www.sqlite.org/download.html) a pre-compiled binary or compile from [source](https://github.com/sqlite/sqlite#compiling-for-unix-like-systems)
 
 ## Configuration
-If you require [configuration](https://hub.steampipe.io/plugins/turbot/{{.PluginAlias}}#configuration) for the extension, you need to set this prior to loading the extension.
+If you require [configuration](https://hub.steampipe.io/plugins/turbot/{{.Plugin}}#configuration) for the extension, you need to set this prior to loading the extension.
 
 - Create the configuration table if it doesn't exist:
-  - `CREATE TABLE IF NOT EXISTS {{.PluginAlias}}_config(config TEXT);`
+  - `CREATE TABLE IF NOT EXISTS {{.Plugin}}_config(config TEXT);`
 - Insert your configuration into the config table:
-  - `INSERT INTO {{.PluginAlias}}_config(config) VALUES('your_config="GoesHere"')`
+  - `INSERT INTO {{.Plugin}}_config(config) VALUES('your_config="GoesHere"')`
 
 ## Installation
-- Copy the binary `steampipe-sqlite-extension-{{.PluginAlias}}.so` to a directory of choice.
+- Copy the binary `steampipe-sqlite-extension-{{.Plugin}}.so` to a directory of choice.
 - Start your `sqlite` instance.
   - `sqlite3` or `sqlite3 myDB.file`
 - Load the extension into `sqlite`. 
-  - `.load /path/to/steampipe-sqlite-extension-{{.PluginAlias}}.so`
+  - `.load /path/to/steampipe-sqlite-extension-{{.Plugin}}.so`
 
 ## Usage
-Please refer to the [Table Documentation](https://hub.steampipe.io/plugins/turbot/{{.PluginAlias}}/tables).
+Please refer to the [Table Documentation](https://hub.steampipe.io/plugins/turbot/{{.Plugin}}/tables).

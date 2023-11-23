@@ -13,6 +13,11 @@ import (
 
 const templateExt = ".tmpl"
 
+type RenderData struct {
+	Plugin          string
+	PluginGithubUrl string
+}
+
 func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
 	var targetFilePath string
 	err := filepath.Walk(templatePath, func(filePath string, info os.FileInfo, err error) error {
@@ -59,12 +64,9 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
 		var renderedContent strings.Builder
 
 		// define the data to be used in the template
-		data := struct {
-			PluginAlias     string
-			PluginGithubUrl string
-		}{
-			pluginAlias,
-			pluginGithubUrl,
+		data := RenderData{
+			Plugin:          pluginAlias,
+			PluginGithubUrl: pluginGithubUrl,
 		}
 
 		// execute the template with the data
@@ -95,15 +97,25 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
 
 func main() {
 	// Check if the correct number of command-line arguments are provided
-	if len(os.Args) != 5 {
-		fmt.Println("Usage: go run generator.go <templatePath> <root> <pluginAlias> <pluginGithubUrl>")
+	if len(os.Args) < 4 {
+		fmt.Println("Usage: go run generator.go <templatePath> <root> <plugin> [pluginGithubUrl]")
 		return
 	}
 
 	templatePath := os.Args[1]
 	root := os.Args[2]
-	pluginAlias := os.Args[3]
-	pluginGithubUrl := os.Args[4]
+	plugin := os.Args[3]
+	var pluginGithubUrl string
+
+	fmt.Println(len(os.Args))
+
+	// Check if PluginGithubUrl is provided as a command-line argument
+	if len(os.Args) == 5 {
+		pluginGithubUrl = os.Args[4]
+	} else {
+		// If PluginGithubUrl is not provided, generate it based on PluginAlias
+		pluginGithubUrl = "github.com/turbot/steampipe-plugin-" + plugin
+	}
 
 	// Convert relative paths to absolute paths
 	absTemplatePath, err := filepath.Abs(templatePath)
@@ -118,5 +130,5 @@ func main() {
 		return
 	}
 
-	RenderDir(absTemplatePath, absRoot, pluginAlias, pluginGithubUrl)
+	RenderDir(absTemplatePath, absRoot, plugin, pluginGithubUrl)
 }

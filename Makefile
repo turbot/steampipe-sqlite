@@ -1,4 +1,10 @@
-build:
-	go run generate/generator.go templates . $(plugin_alias) $(plugin_github_url)
+# Check if the 'plugin' variable is set
+validate_plugin:
+ifndef plugin
+	$(error "The 'plugin' variable is missing. Usage: make build plugin=<plugin_name>")
+endif
+
+build: validate_plugin
+	go run generate/generator.go templates . $(plugin) $(plugin_github_url)
 	go mod tidy
 	make -f out/Makefile build
