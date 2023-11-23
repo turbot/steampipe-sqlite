@@ -33,7 +33,7 @@ type QueryLimit struct {
 type Qual struct {
 	FieldName        string                  `json:"field_name"`
 	Operator         string                  `json:"operator"`
-	ColumnDefinition *proto.ColumnDefinition `json:"-"`
+	ColumnDefinition *proto.ColumnDefinition `json:"column_definition"`
 }
 type QualOperator struct {
 	Op   string  `json:"op"`
@@ -81,6 +81,7 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 
 	for idx, ic := range info.Constraints {
 		log.Println("[DEBUG] table.BestIndex constraint >>>: ", ic.ColumnIndex, ic.Op, ic.Usable)
+		log.Println("[DEBUG] table.BestIndex column >>>: ", p.tableSchema.Columns[ic.ColumnIndex])
 
 		output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
 			Omit: true,
@@ -205,7 +206,7 @@ func (p *PluginTable) getColumnsFromIndexInfo(info *sqlite.IndexInfoInput) (colu
 	// the bit for that index is set
 	for i, col := range p.tableSchema.GetColumns() {
 
-		log.Println("[DEBUG] table.getColumnsFromIndexInfo col: ", col.GetName())
+		log.Println("[TRACE] table.getColumnsFromIndexInfo col: ", col.GetName())
 
 		// check if the bit is set in info.ColUsed
 		// if it is, then this column is used
@@ -217,7 +218,7 @@ func (p *PluginTable) getColumnsFromIndexInfo(info *sqlite.IndexInfoInput) (colu
 			continue
 		}
 		if checkKthBitSet(*info.ColUsed, i) {
-			log.Println("[DEBUG] table.getColumnsFromIndexInfo col used: ", col.GetName())
+			log.Println("[TRACE] table.getColumnsFromIndexInfo col used: ", col.GetName())
 			columns = append(columns, col.GetName())
 		}
 	}
@@ -227,7 +228,7 @@ func (p *PluginTable) getColumnsFromIndexInfo(info *sqlite.IndexInfoInput) (colu
 // checkKthBitSet checks if the kth (0-indexed) bit is set in n
 // if k is more than 63, then it returns true
 func checkKthBitSet(n int64, bitIdxK int) bool {
-	log.Println("[DEBUG] table.checkKthBitSet", n, bitIdxK)
-	defer log.Println("[DEBUG] end table.checkKthBitSet", n, bitIdxK)
+	log.Println("[TRACE] table.checkKthBitSet", n, bitIdxK)
+	defer log.Println("[TRACE] end table.checkKthBitSet", n, bitIdxK)
 	return n&(1<<bitIdxK) != 0
 }
