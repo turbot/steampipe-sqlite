@@ -54,7 +54,7 @@ main() {
 
   echo ""
   echo "Downloading ${BOLD}${asset_name}${NORMAL}..."
-  curl -sSL -H "$AUTH" -H "Accept: application/octet-stream" \
+  curl -#SL -H "$AUTH" -H "Accept: application/octet-stream" \
      "https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/assets/$id" \
      -o "$asset_name" -L --create-dirs
 
