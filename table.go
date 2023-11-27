@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"math"
+	"strconv"
+	"sync/atomic"
 
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	"github.com/turbot/steampipe-plugin-sdk/v5/sperr"
 	"go.riyazali.net/sqlite"
 	"golang.org/x/exp/maps"
 )
@@ -31,6 +33,7 @@ type QueryLimit struct {
 }
 
 type Qual struct {
+	ArgvIndex        int                     `json:"argv_index"`
 	FieldName        string                  `json:"field_name"`
 	Operator         string                  `json:"operator"`
 	ColumnDefinition *proto.ColumnDefinition `json:"column_definition"`
@@ -43,6 +46,7 @@ type QualOperator struct {
 type PluginTable struct {
 	name        string
 	tableSchema *proto.TableSchema
+	planNumber  int64
 }
 
 func (p *PluginTable) getLimit(info *sqlite.IndexInfoInput) (limit *QueryLimit) {
@@ -64,59 +68,68 @@ func (p *PluginTable) getLimit(info *sqlite.IndexInfoInput) (limit *QueryLimit) 
 
 // if there are unusable constraints on any of start, stop, or step then
 // this plan is unusable and the xBestIndex method should return a SQLITE_CONSTRAINT error.
-func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoOutput, error) {
-	log.Println("[DEBUG] table.BestIndex start")
-	defer log.Println("[DEBUG] table.BestIndex end")
+func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (output *sqlite.IndexInfoOutput, err error) {
+	log.Println("[DEBUG] table.BestIndex start", p.name)
+	defer log.Println("[DEBUG] table.BestIndex end", p.name)
 
 	qc := &QueryContext{
 		Columns: p.getColumnsFromIndexInfo(info),
 	}
 
-	output := &sqlite.IndexInfoOutput{
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("[ERROR] table.BestIndex recover: ", r)
+			err = sperr.ToError(r)
+		}
+		log.Println("[TRACE] table.BestIndex idxnum: ", output.IndexNumber)
+		log.Println("[TRACE] table.BestIndex idxStr: ", output.IndexString)
+		log.Println("[TRACE] table.BestIndex output EstimatedCost: ", output.EstimatedCost)
+		for _, cu := range output.ConstraintUsage {
+			log.Println("[TRACE] table.BestIndex output.ConstraintUsage: ", cu.ArgvIndex, cu.Omit)
+		}
+	}()
+
+	newPlanNumber := atomic.AddInt64(&p.planNumber, 1)
+
+	output = &sqlite.IndexInfoOutput{
 		EstimatedCost:   math.MaxFloat64,
-		IndexNumber:     0,
-		IndexString:     "",
+		IndexNumber:     int(newPlanNumber),                   // although this should not be required, lets put a unique value to this field
+		IndexString:     strconv.FormatInt(newPlanNumber, 10), // just set this to a unique number
 		ConstraintUsage: make([]*sqlite.ConstraintUsage, len(info.Constraints)),
 	}
 
+	var currentArgvIndex = atomic.Int64{}
+
 	for idx, ic := range info.Constraints {
-		log.Println("[DEBUG] table.BestIndex constraint >>>: ", ic.ColumnIndex, ic.Op, ic.Usable)
-		log.Println("[DEBUG] table.BestIndex column >>>: ", p.tableSchema.Columns[ic.ColumnIndex])
+		log.Println("[TRACE] table.BestIndex idx >>>: ", idx)
+		log.Println("[TRACE] table.BestIndex constraint >>>: ", ic.ColumnIndex, ic.Op, ic.Usable)
+		log.Println("[TRACE] table.BestIndex column >>>: ", p.tableSchema.Columns[ic.ColumnIndex])
 
-		output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
-			Omit: true,
-		}
-
+		// if this constraint is not usable, then skip it - it will be omitted
 		if !ic.Usable {
-			log.Println("[DEBUG] table.BestIndex constraint not usable")
+			log.Println("[TRACE] table.BestIndex constraint not usable")
+			output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
+				// return an argvIndex of -1 so that this does not get passed in to xFilter
+				ArgvIndex: -1,
+				Omit:      true,
+			}
 			continue
 		}
 
-		log.Println("[DEBUG] table.BestIndex constraint is usable")
-		if ic.Op == sqlite.ConstraintOp(SQLITE_INDEX_CONSTRAINT_LIMIT) {
-			// sqlite passes LIMIT as a constraint (sort of makes sense)
-			// lets use it
-			limit := &QueryLimit{
-				Idx: idx,
-			}
-			output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
-				Omit:      false,
-				ArgvIndex: idx + 1, // according to https://www.sqlite.org/vtab.html, this should be 1-indexed
-			}
-			qc.Limit = limit
-			continue
+		// default to using this constraint
+		nextArgvIndex := int(currentArgvIndex.Add(1))
+		output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
+			ArgvIndex: nextArgvIndex,
+			Omit:      false,
 		}
 
 		cost := p.getConstraintCost(ic)
 		if cost < output.EstimatedCost {
 			output.EstimatedCost = cost
 		}
-		output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
-			Omit:      false,
-			ArgvIndex: idx + 1, // according to https://www.sqlite.org/vtab.html, this should be 1-indexed
-		}
 		qualOperator := getPluginOperator(ic.Op)
 		qc.Quals = append(qc.Quals, &Qual{
+			ArgvIndex:        nextArgvIndex,
 			FieldName:        p.tableSchema.Columns[ic.ColumnIndex].GetName(),
 			Operator:         qualOperator.Op,
 			ColumnDefinition: p.tableSchema.Columns[ic.ColumnIndex],
@@ -125,7 +138,7 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (*sqlite.IndexInfoO
 
 	qcBytes, err := json.Marshal(qc)
 	if err != nil {
-		fmt.Println(err)
+		log.Println("[WARN] table.BestIndex json.Marshal failed: ", err)
 		return nil, err
 	}
 	output.IndexString = string(qcBytes)
@@ -140,8 +153,8 @@ func (p *PluginTable) getConstraintCost(ic *sqlite.IndexConstraint) (cost float6
 	schemaColumn := p.tableSchema.Columns[ic.ColumnIndex]
 	sqliteOp := ic.Op
 
-	log.Println("[DEBUG] column: ", schemaColumn.GetName())
-	log.Println("[DEBUG] sqliteOp: ", sqliteOp)
+	log.Println("[DEBUG] >>> column: ", schemaColumn.GetName())
+	log.Println("[DEBUG] >>> sqliteOp: ", sqliteOp)
 
 	// is this a usable key column?
 	for _, keyColumn := range p.tableSchema.GetAllKeyColumns() {
@@ -152,9 +165,9 @@ func (p *PluginTable) getConstraintCost(ic *sqlite.IndexConstraint) (cost float6
 
 		// does this key column support this operator?
 		for _, operator := range keyColumn.Operators {
-			log.Println("[DEBUG] operator: ", operator, sqliteOp)
+			log.Println("[DEBUG] >>> operator: ", operator, sqliteOp)
 			if qualOp := getPluginOperator(sqliteOp); qualOp.Op == operator {
-				return cost
+				return qualOp.Cost
 			}
 		}
 	}
