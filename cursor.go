@@ -36,8 +36,8 @@ func NewPluginCursor(ctx context.Context, table *PluginTable) *PluginCursor {
 // The implementation of this method should store the filter expression in the cursor object
 // and then call Next() to advance the cursor to the first row that matches the filter.
 func (p *PluginCursor) Filter(indexNumber int, indexString string, values ...sqlite.Value) error {
-	log.Println("[DEBUG] cursor.Filter:", indexNumber, indexString, values)
-	defer log.Println("[DEBUG] end cursor.Filter:", indexNumber, indexString, values)
+	log.Println("[DEBUG] cursor.Filter:", p.table.name, indexNumber, indexString, values)
+	defer log.Println("[DEBUG] end cursor.Filter:", p.table.name, indexNumber, indexString, values)
 
 	queryCtx, err := p.buildQueryContext(indexNumber, indexString, values...)
 	if err != nil {
