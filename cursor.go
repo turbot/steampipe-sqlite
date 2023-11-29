@@ -175,8 +175,8 @@ func (p *PluginCursor) buildQualMap(qc *QueryContext, values ...sqlite.Value) (m
 
 	// build the qual map
 	qualMap := make(map[string]*proto.Quals)
-	for i, qual := range qc.Quals {
-		mappedValue, err := getMappedQualValue(values[i], qual)
+	for _, qual := range qc.Quals {
+		mappedValue, err := getMappedQualValue(values[qual.ArgvIndex-1], qual)
 		if err != nil {
 			return nil, err
 		}
