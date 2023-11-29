@@ -61,8 +61,9 @@ main() {
   # Use gunzip to extract it
   gunzip $asset_name
 
-  # get the filename without the .gz extension
+  # get the filename without the .gz extension and rename it to remove the OS and architecture
   filename=$(echo $asset_name | sed 's/\.gz$//')
+  mv $filename steampipe_sqlite_extension_${plugin}.so
 
   # move the .so file to the desired location if provided
   if [ "$location" != "$(pwd)" ]; then
