@@ -27,7 +27,7 @@ Steps:
 1. Change to the cloned directory
 1. Run the following commands:
 ```shell
-make build plugin_alias="<plugin short name>" plugin_github_url="<plugin repo github URL>"
+make build plugin="<plugin short name>" plugin_github_url="<plugin repo github URL>"
 ```
 Replace <plugin short name> with the alias or short name of your plugin and <plugin repo GitHub URL> with the GitHub URL of the plugin's repository, for example: github.com/turbot/steampipe-plugin-csv.
 
