@@ -67,7 +67,7 @@ main() {
 
   # move the .so file to the desired location if provided
   if [ "$location" != "$(pwd)" ]; then
-    mv $filename $location
+    mv steampipe_sqlite_extension_${plugin}.so $location
   fi
 
   echo ""
