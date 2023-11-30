@@ -103,11 +103,11 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (output *sqlite.Ind
 	for idx, ic := range info.Constraints {
 		log.Println("[TRACE] table.BestIndex idx >>>: ", idx)
 		log.Println("[TRACE] table.BestIndex constraint >>>: ", ic.ColumnIndex, ic.Op, ic.Usable)
-		log.Println("[TRACE] table.BestIndex column >>>: ", p.tableSchema.Columns[ic.ColumnIndex])
 
 		// if this constraint is not usable, then skip it - it will be omitted
-		if !ic.Usable {
-			log.Println("[TRACE] table.BestIndex constraint not usable")
+		// Note: ROWID (-1 in ColumnIndex) cannot be used, since plugin tables do not have a similar concept
+		if !ic.Usable || ic.ColumnIndex == -1 {
+			log.Println("[TRACE] table.BestIndex constraint not usable or ROWID")
 			output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
 				// return an argvIndex of -1 so that this does not get passed in to xFilter
 				ArgvIndex: -1,
@@ -115,6 +115,8 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (output *sqlite.Ind
 			}
 			continue
 		}
+
+		log.Println("[TRACE] table.BestIndex column >>>: ", p.tableSchema.Columns[ic.ColumnIndex])
 
 		// default to using this constraint
 		nextArgvIndex := int(currentArgvIndex.Add(1))
