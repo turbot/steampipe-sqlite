@@ -10,6 +10,7 @@ import (
 
 	"github.com/turbot/go-kit/helpers"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 	"github.com/turbot/steampipe-plugin-sdk/v5/sperr"
 	"go.riyazali.net/sqlite"
 	"golang.org/x/exp/maps"
@@ -180,7 +181,7 @@ func (p *PluginTable) allRequiredKeyColsInConstraints(info *sqlite.IndexInfoInpu
 	// get a slice of all key columns
 	keyColumns := make([]string, 0, len(p.tableSchema.GetAllKeyColumns()))
 	for _, keyColumn := range p.tableSchema.GetAllKeyColumns() {
-		if keyColumn.GetRequire() == "require" {
+		if keyColumn.GetRequire() == plugin.Required {
 			// not concerned about optional columns
 			keyColumns = append(keyColumns, keyColumn.GetName())
 		}
