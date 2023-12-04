@@ -31,10 +31,10 @@ main() {
   # Generate the URI for the FDW
   if [ "$version" = "latest" ]; then
     uri="https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/latest"
-    asset_name="steampipe_sqlite_extension_${plugin}_${target}"
+    asset_name="steampipe_sqlite_${plugin}_${target}"
   else
     uri="https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/tags/${version}"
-    asset_name="steampipe_sqlite_extension_${plugin}_${target}"
+    asset_name="steampipe_sqlite_${plugin}_${target}"
   fi
 
   # Read the GitHub Personal Access Token
@@ -63,11 +63,11 @@ main() {
 
   # get the filename without the .gz extension and rename it to remove the OS and architecture
   filename=$(echo $asset_name | sed 's/\.gz$//')
-  mv $filename steampipe_sqlite_extension_${plugin}.so
+  mv $filename steampipe_sqlite_${plugin}.so
 
   # move the .so file to the desired location if provided
   if [ "$location" != "$(pwd)" ]; then
-    mv steampipe_sqlite_extension_${plugin}.so $location
+    mv steampipe_sqlite_${plugin}.so $location
   fi
 
   echo ""
