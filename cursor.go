@@ -158,7 +158,7 @@ func (p *PluginCursor) extractLimitForQueryContext(qc *QueryContext, values ...s
 
 	if qc.Limit != nil {
 		// get the value at the given index
-		v := values[qc.Limit.Idx]
+		v := values[qc.Limit.ArgvIdx-1]
 		if v.Type() == sqlite.SQLITE_INTEGER {
 			qc.Limit.Rows = v.Int64()
 		} else {
