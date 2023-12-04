@@ -139,6 +139,9 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (output *sqlite.Ind
 		})
 	}
 
+	// we cannot do this and short circuit at the top of the function
+	// since we need to set the output.ConstraintUsage for all constraints
+	// even if they are not usable
 	if !p.allRequiredKeyColsInConstraints(info) {
 		// all key columns are not provided
 		// this is going to be a very high cost plan
@@ -163,30 +166,29 @@ func (p *PluginTable) allRequiredKeyColsInConstraints(info *sqlite.IndexInfoInpu
 	log.Println("[DEBUG] table.verifyAllKeyColumnsInConstraints start")
 	defer log.Println("[DEBUG] table.verifyAllKeyColumnsInConstraints end")
 
-	// make a slice of all constraints
-	constraints := make([]string, 0, len(info.Constraints))
+	// make a slice of all constraints (by name)
+	constraintColumns := make([]string, 0, len(info.Constraints))
 	for _, ic := range info.Constraints {
 		if ic.ColumnIndex == -1 {
-			// ROWID (-1 in ColumnIndex) cannot be used, since plugin tables do not have a similar concept
+			// ROWID (-1 in ColumnIndex) cannot be used, since plugin tables do not have a parallel
 			continue
 		}
 		column := p.tableSchema.Columns[ic.ColumnIndex]
-		constraints = append(constraints, column.GetName())
+		constraintColumns = append(constraintColumns, column.GetName())
 	}
 
-	// get a sloce of all key columns
+	// get a slice of all key columns
 	keyColumns := make([]string, 0, len(p.tableSchema.GetAllKeyColumns()))
 	for _, keyColumn := range p.tableSchema.GetAllKeyColumns() {
-		if keyColumn.GetRequire() != "require" {
+		if keyColumn.GetRequire() == "require" {
 			// not concerned about optional columns
-			continue
+			keyColumns = append(keyColumns, keyColumn.GetName())
 		}
-		keyColumns = append(keyColumns, keyColumn.GetName())
 	}
 
 	// check if all key columns are in the constraints
 	for _, keyColumn := range keyColumns {
-		if !helpers.StringSliceContains(constraints, keyColumn) {
+		if !helpers.StringSliceContains(constraintColumns, keyColumn) {
 			return false
 		}
 	}
