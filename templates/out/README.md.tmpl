@@ -1,6 +1,6 @@
-# Steampipe SQLite Extension {{.Plugin}}
+# Steampipe SQLite {{.Plugin}}
 
-This SQLite extensions allows you to query {{.Plugin}} using the [Steampipe Plugin](https://{{.PluginGithubUrl}})
+This SQLite extension allows you to query {{.Plugin}} using the [Steampipe Plugin](https://{{.PluginGithubUrl}})
 
 ## Prerequisites
 - A build of SQLite that supports extensions, you can verify this by opening SQLite and ensuring `.help` displays a `.load command`.
@@ -15,11 +15,11 @@ If you require [configuration](https://hub.steampipe.io/plugins/turbot/{{.Plugin
   - `INSERT INTO {{.Plugin}}_config(config) VALUES('your_config="GoesHere"')`
 
 ## Installation
-- Copy the binary `steampipe-sqlite-extension-{{.Plugin}}.so` to a directory of choice.
+- Copy the binary `steampipe-sqlite-{{.Plugin}}.so` to a directory of choice.
 - Start your `sqlite` instance.
   - `sqlite3` or `sqlite3 myDB.file`
 - Load the extension into `sqlite`. 
-  - `.load /path/to/steampipe-sqlite-extension-{{.Plugin}}.so`
+  - `.load /path/to/steampipe-sqlite-{{.Plugin}}.so`
 
 ## Usage
 Please refer to the [Table Documentation](https://hub.steampipe.io/plugins/turbot/{{.Plugin}}/tables).
