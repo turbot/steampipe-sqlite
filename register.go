@@ -20,7 +20,7 @@ func register() {
 
 	sqlite.Register(func(api *sqlite.ExtensionApi) (sqlite.ErrorCode, error) {
 		configureFn := NewConfigureFn(api)
-		fnName := fmt.Sprintf("%s_configure", pluginAlias)
+		fnName := fmt.Sprintf("steampipe_configure_%s", pluginAlias)
 		fnName = strings.ToLower(fnName)
 		if err := api.CreateFunction(fnName, configureFn); err != nil {
 			return sqlite.SQLITE_ERROR, err
