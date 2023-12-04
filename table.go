@@ -30,8 +30,8 @@ type QueryContext struct {
 }
 
 type QueryLimit struct {
-	Rows    int64 `json:"-"`   // the number of rows to return - populated during xFilter
-	ArgvIdx int   `json:"idx"` // the index in the values that Cursor.Filter receives
+	Rows int64 // the number of rows to return
+	Idx  int   `json:"idx"` // the index in the values that Cursor.Filter receives
 }
 
 type Qual struct {
@@ -60,7 +60,7 @@ func (p *PluginTable) getLimit(info *sqlite.IndexInfoInput) (limit *QueryLimit) 
 			// sqlite passes LIMIT as a constraint (sort of makes sense)
 			// use it
 			limit = &QueryLimit{
-				ArgvIdx: idx,
+				Idx: idx,
 			}
 			break
 		}
@@ -125,15 +125,6 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (output *sqlite.Ind
 		output.ConstraintUsage[idx] = &sqlite.ConstraintUsage{
 			ArgvIndex: nextArgvIndex,
 			Omit:      false,
-		}
-
-		// if this is a limit constraint, then we need to handle it differently
-		// since it is not a constraint on a column
-		if ic.Op == sqlite.ConstraintOp(SQLITE_INDEX_CONSTRAINT_LIMIT) {
-			qc.Limit = &QueryLimit{
-				ArgvIdx: nextArgvIndex,
-			}
-			continue
 		}
 
 		cost := p.getConstraintCost(ic)
