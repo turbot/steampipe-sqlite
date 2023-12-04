@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"sync/atomic"
 
+	"github.com/turbot/go-kit/helpers"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"github.com/turbot/steampipe-plugin-sdk/v5/sperr"
 	"go.riyazali.net/sqlite"
@@ -138,6 +139,16 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (output *sqlite.Ind
 		})
 	}
 
+	if !p.allRequiredKeyColsInConstraints(info) {
+		// all key columns are not provided
+		// this is going to be a very high cost plan
+		// we do this instead of a SQLITE_CONSTRAINT error
+		// so that the query reaches the plugin which can provide
+		// a much richer error message around required
+		// key columns not being provided
+		output.EstimatedCost = math.MaxFloat64
+	}
+
 	qcBytes, err := json.Marshal(qc)
 	if err != nil {
 		log.Println("[WARN] table.BestIndex json.Marshal failed: ", err)
@@ -146,6 +157,41 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (output *sqlite.Ind
 	output.IndexString = string(qcBytes)
 
 	return output, nil
+}
+
+func (p *PluginTable) allRequiredKeyColsInConstraints(info *sqlite.IndexInfoInput) bool {
+	log.Println("[DEBUG] table.verifyAllKeyColumnsInConstraints start")
+	defer log.Println("[DEBUG] table.verifyAllKeyColumnsInConstraints end")
+
+	// make a slice of all constraints
+	constraints := make([]string, 0, len(info.Constraints))
+	for _, ic := range info.Constraints {
+		if ic.ColumnIndex == -1 {
+			// ROWID (-1 in ColumnIndex) cannot be used, since plugin tables do not have a similar concept
+			continue
+		}
+		column := p.tableSchema.Columns[ic.ColumnIndex]
+		constraints = append(constraints, column.GetName())
+	}
+
+	// get a sloce of all key columns
+	keyColumns := make([]string, 0, len(p.tableSchema.GetAllKeyColumns()))
+	for _, keyColumn := range p.tableSchema.GetAllKeyColumns() {
+		if keyColumn.GetRequire() != "require" {
+			// not concerned about optional columns
+			continue
+		}
+		keyColumns = append(keyColumns, keyColumn.GetName())
+	}
+
+	// check if all key columns are in the constraints
+	for _, keyColumn := range keyColumns {
+		if !helpers.StringSliceContains(constraints, keyColumn) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (p *PluginTable) getConstraintCost(ic *sqlite.IndexConstraint) (cost float64) {
