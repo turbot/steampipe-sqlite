@@ -54,7 +54,7 @@ func (p *PluginCursor) Filter(indexNumber int, indexString string, values ...sql
 	pluginServer.CallExecuteAsync(execRequest, p.stream)
 
 	p.currentRow = 0
-	return nil
+	return p.Next()
 }
 
 // Next is called by SQLite to advance the cursor to the next row in the result set.
