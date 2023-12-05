@@ -260,10 +260,10 @@ func (p *PluginTable) getColumnsFromIndexInfo(info *sqlite.IndexInfoInput) (colu
 	log.Println("[DEBUG] table.getColumnsFromIndexInfo")
 	defer log.Println("[DEBUG] end table.getColumnsFromIndexInfo")
 
-	log.Println("[DEBUG] table.getColumnsFromIndexInfo info.ColUsed: ", *info.ColUsed)
+	log.Println("[TRACE] table.getColumnsFromIndexInfo info.ColUsed: ", *info.ColUsed)
 
 	defer func() {
-		log.Println("[DEBUG] table.getColumnsFromIndexInfo columns: ", columns)
+		log.Println("[TRACE] table.getColumnsFromIndexInfo columns: ", columns)
 	}()
 
 	// get the columns from the index info
@@ -278,20 +278,14 @@ func (p *PluginTable) getColumnsFromIndexInfo(info *sqlite.IndexInfoInput) (colu
 	// so we need to iterate over the columns by index and check that
 	// the bit for that index is set
 	for i, col := range p.tableSchema.GetColumns() {
-
-		log.Println("[TRACE] table.getColumnsFromIndexInfo col: ", col.GetName())
-
 		// check if the bit is set in info.ColUsed
 		// if it is, then this column is used
 		// if it is not, then this column is not used
-		// if the bit is set for the 64th column, then any column over 63 is used
-		// let's just include all of them and rely on the SQLite core to do the rest of the selection
-		if i > 63 && checkKthBitSet(*info.ColUsed, 64) {
-			columns = append(columns, col.GetName())
-			continue
-		}
-		if checkKthBitSet(*info.ColUsed, i) {
-			log.Println("[TRACE] table.getColumnsFromIndexInfo col used: ", col.GetName())
+		// if the bit is set for the 63rd column, then any column over 63 is used
+		// we just include all of them and rely on the SQLite core to do the rest of the selection
+		isColUsed := checkKthBitSet(*info.ColUsed, i) || (i > 63 && checkKthBitSet(*info.ColUsed, 63))
+		log.Println("[TRACE] table.getColumnsFromIndexInfo col used: ", col.GetName(), i, isColUsed)
+		if isColUsed {
 			columns = append(columns, col.GetName())
 		}
 	}
