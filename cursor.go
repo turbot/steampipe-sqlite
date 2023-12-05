@@ -89,8 +89,11 @@ func (p *PluginCursor) Rowid() (int64, error) {
 // The implementation of this method should call one of the ResultXXX() methods on the context
 // to store the value for the column.
 func (p *PluginCursor) Column(context *sqlite.VirtualTableContext, columnIdx int) error {
+	log.Println("[DEBUG] cursor.Column", columnIdx)
+	defer log.Println("[DEBUG] end cursor.Column", columnIdx)
 	column := p.table.tableSchema.Columns[columnIdx]
 
+	log.Println("[TRACE] cursor.Column", "colname", column.Name, "coltype", column.Type)
 	switch column.Type {
 	case proto.ColumnType_BOOL:
 		if p.currentItem[column.Name].GetBoolValue() {
