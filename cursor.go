@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/turbot/steampipe-plugin-sdk/v5/anywhere"
+	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
 	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
 	"go.riyazali.net/sqlite"
 )
@@ -49,12 +50,38 @@ func (p *PluginCursor) Filter(indexNumber int, indexString string, values ...sql
 		return err
 	}
 
-	execRequest := buildExecuteRequest(pluginAlias, p.table.name, queryCtx, qualMap)
+	execRequest := p.buildExecuteRequest(pluginAlias, queryCtx, qualMap)
 
 	pluginServer.CallExecuteAsync(execRequest, p.stream)
 
 	p.currentRow = 0
 	return p.Next()
+}
+
+func (p *PluginCursor) buildExecuteRequest(alias string, ctx *QueryContext, quals map[string]*proto.Quals) *proto.ExecuteRequest {
+	limitRows := int64(-1)
+	if ctx.Limit != nil {
+		limitRows = ctx.Limit.Rows
+	}
+	qc := proto.NewQueryContext(ctx.Columns, quals, limitRows)
+	ecd := proto.ExecuteConnectionData{
+		Limit:        qc.Limit,
+		CacheEnabled: true,
+		CacheTtl:     300,
+	}
+	req := proto.ExecuteRequest{
+		Table:                 p.table.name,
+		QueryContext:          qc,
+		CallId:                grpc.BuildCallId(),
+		Connection:            alias,
+		TraceContext:          nil,
+		ExecuteConnectionData: make(map[string]*proto.ExecuteConnectionData),
+		// setting deprecated values for cache properties
+		CacheEnabled: true,
+		CacheTtl:     300,
+	}
+	req.ExecuteConnectionData[alias] = &ecd
+	return &req
 }
 
 // Next is called by SQLite to advance the cursor to the next row in the result set.
