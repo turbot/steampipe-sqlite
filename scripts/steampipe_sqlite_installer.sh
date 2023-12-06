@@ -83,7 +83,7 @@ validate_inputs() {
 
   # Check if version is provided as an argument
   if [ $# -lt 2 ] || [ -z "$2" ]; then
-    read -p "Enter version (default: latest): " version
+    read -p "Enter version (latest): " version
     version=${version:-latest}  # Default to 'latest' if input is empty
   else
     version=$2
@@ -91,7 +91,7 @@ validate_inputs() {
 
   # Check if location is provided as an argument
   if [ $# -lt 3 ] || [ -z "$3" ]; then
-    read -p "Enter location (default: current directory): " location
+    read -p "Enter location (current directory): " location
     location=${location:-$(pwd)}  # Default to current directory if input is empty
   else
     location=$3
