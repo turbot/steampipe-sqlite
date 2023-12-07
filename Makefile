@@ -7,4 +7,4 @@ endif
 build: validate_plugin
 	go run generate/generator.go templates . $(plugin) $(plugin_github_url)
 	go mod tidy
-	make -f out/Makefile build
+	$(MAKE) -f out/Makefile build
