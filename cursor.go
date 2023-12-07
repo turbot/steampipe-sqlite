@@ -59,15 +59,24 @@ func (p *PluginCursor) Filter(indexNumber int, indexString string, values ...sql
 }
 
 func (p *PluginCursor) buildExecuteRequest(alias string, ctx *QueryContext, quals map[string]*proto.Quals) *proto.ExecuteRequest {
+	log.Println("[DEBUG] cursor.buildExecuteRequest")
+	defer log.Println("[DEBUG] end cursor.buildExecuteRequest")
+
 	limitRows := int64(-1)
 	if ctx.Limit != nil {
 		limitRows = ctx.Limit.Rows
 	}
+
+	cacheEnabled := cacheEnabled()
+	cacheTTL := cacheTTL()
+
+	log.Println("[DEBUG] cursor.buildExecuteRequest", "cacheEnabled", cacheEnabled, "cacheTTL", cacheTTL)
+
 	qc := proto.NewQueryContext(ctx.Columns, quals, limitRows)
 	ecd := proto.ExecuteConnectionData{
 		Limit:        qc.Limit,
-		CacheEnabled: true,
-		CacheTtl:     300,
+		CacheEnabled: cacheEnabled,
+		CacheTtl:     cacheTTL,
 	}
 	req := proto.ExecuteRequest{
 		Table:                 p.table.name,
@@ -77,8 +86,8 @@ func (p *PluginCursor) buildExecuteRequest(alias string, ctx *QueryContext, qual
 		TraceContext:          nil,
 		ExecuteConnectionData: make(map[string]*proto.ExecuteConnectionData),
 		// setting deprecated values for cache properties
-		CacheEnabled: true,
-		CacheTtl:     300,
+		CacheEnabled: cacheEnabled,
+		CacheTtl:     cacheTTL,
 	}
 	req.ExecuteConnectionData[alias] = &ecd
 	return &req
