@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 set -e
 
@@ -7,21 +7,23 @@ main() {
   BOLD=$(tput bold)
   NORMAL=$(tput sgr0)
 
-  if ! command -v tar >/dev/null; then
+  if ! command -v tar >/dev/null 2>&1; then
     echo "Error: 'tar' is required." 1>&2
     exit 1
   fi
 
+  OS=$(uname -s)
   if [ "$OS" = "Windows_NT" ]; then
     echo "Error: Windows is not supported yet." 1>&2
     exit 1
   else
-    case $(uname -sm) in
+    UNAME_SM=$(uname -sm)
+    case "$UNAME_SM" in
     "Darwin x86_64") target="darwin_amd64.tar.gz" ;;
     "Darwin arm64") target="darwin_arm64.tar.gz" ;;
     "Linux x86_64") target="linux_amd64.tar.gz" ;;
     "Linux aarch64") target="linux_arm64.tar.gz" ;;
-    *) echo "Error: '$(uname -sm)' is not supported yet." 1>&2;exit 1 ;;
+    *) echo "Error: '$UNAME_SM' is not supported yet." 1>&2; exit 1 ;;
     esac
   fi
 
@@ -29,18 +31,13 @@ main() {
   validate_inputs "$@"
 
   # Generate the URI for the FDW
-  if [ "$version" = "latest" ]; then
-    uri="https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/latest"
-    asset_name="steampipe_sqlite_${plugin}.${target}"
-  else
-    uri="https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/tags/${version}"
-    asset_name="steampipe_sqlite_${plugin}.${target}"
-  fi
+  uri="https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases"
+  uri="${uri}/$( [ "$version" = "latest" ] && echo "latest" || echo "tags/${version}" )"
+  asset_name="steampipe_sqlite_${plugin}.${target}"
 
   # Read the GitHub Personal Access Token
-  GITHUB_TOKEN=${GITHUB_TOKEN:-}  # Assuming GITHUB_TOKEN is set as an environment variable
+  GITHUB_TOKEN=${GITHUB_TOKEN:-}
 
-  # Check if the GITHUB_TOKEN is set
   if [ -z "$GITHUB_TOKEN" ]; then
     echo ""
     echo "Error: GITHUB_TOKEN is not set. Please set your GitHub Personal Access Token as an environment variable." 1>&2
@@ -49,7 +46,7 @@ main() {
   AUTH="Authorization: token $GITHUB_TOKEN"
 
   response=$(curl -sH "$AUTH" $uri)
-  id=`echo "$response" | jq --arg asset_name "$asset_name" '.assets[] | select(.name == $asset_name) | .id' |  tr -d '"'`
+  id=$(echo "$response" | jq --arg asset_name "$asset_name" '.assets[] | select(.name == $asset_name) | .id' | tr -d '"')
   GH_ASSET="$uri/releases/assets/$id"
 
   echo ""
@@ -58,12 +55,12 @@ main() {
      "https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/assets/$id" \
      -o "$asset_name" -L --create-dirs
 
-  # Use gunzip to extract it
+  # Use tar to extract it
   tar -xvf $asset_name
 
   # move the .so file to the desired location if provided
   if [ "$location" != "$(pwd)" ]; then
-    mv steampipe_sqlite_${plugin}.so $location
+    mv "steampipe_sqlite_${plugin}.so" "$location"
   fi
 
   echo ""
@@ -76,23 +73,26 @@ main() {
 validate_inputs() {
   # Check if plugin is provided as an argument
   if [ $# -eq 0 ] || [ -z "$1" ]; then
-    read -p "Enter the plugin name: " plugin
+    printf "Enter the plugin name: "
+    read plugin
   else
     plugin=$1
   fi
 
   # Check if version is provided as an argument
   if [ $# -lt 2 ] || [ -z "$2" ]; then
-    read -p "Enter version (latest): " version
-    version=${version:-latest}  # Default to 'latest' if input is empty
+    printf "Enter version (latest): "
+    read version
+    version=${version:-latest}
   else
     version=$2
   fi
 
   # Check if location is provided as an argument
   if [ $# -lt 3 ] || [ -z "$3" ]; then
-    read -p "Enter location (current directory): " location
-    location=${location:-$(pwd)}  # Default to current directory if input is empty
+    printf "Enter location (current directory): "
+    read location
+    location=${location:-$(pwd)}
   else
     location=$3
   fi
