@@ -12,6 +12,11 @@ main() {
     exit 1
   fi
 
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "Error: 'jq' is required." 1>&2
+    exit 1
+  fi
+
   OS=$(uname -s)
   if [ "$OS" = "Windows_NT" ]; then
     echo "Error: Windows is not supported yet." 1>&2
