@@ -12,11 +12,6 @@ main() {
     exit 1
   fi
 
-  if ! command -v jq >/dev/null 2>&1; then
-    echo "Error: 'jq' is required." 1>&2
-    exit 1
-  fi
-
   OS=$(uname -s)
   if [ "$OS" = "Windows_NT" ]; then
     echo "Error: Windows is not supported yet." 1>&2
@@ -35,30 +30,20 @@ main() {
   # Validate the inputs
   validate_inputs "$@"
 
-  # Generate the URI for the FDW
-  uri="https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases"
-  uri="${uri}/$( [ "$version" = "latest" ] && echo "latest" || echo "tags/${version}" )"
+  # Generate the URI for the extension
   asset_name="steampipe_sqlite_${plugin}.${target}"
-
-  # Read the GitHub Personal Access Token
-  GITHUB_TOKEN=${GITHUB_TOKEN:-}
-
-  if [ -z "$GITHUB_TOKEN" ]; then
-    echo ""
-    echo "Error: GITHUB_TOKEN is not set. Please set your GitHub Personal Access Token as an environment variable." 1>&2
-    exit 1
+  if [ "$version" = "latest" ]; then
+    uri="https://github.com/turbot/steampipe-plugin-${plugin}/releases/latest/download/${asset_name}"
+  else
+    uri="https://github.com/turbot/steampipe-plugin-${plugin}/releases/download/${version}/${asset_name}"
   fi
-  AUTH="Authorization: token $GITHUB_TOKEN"
-
-  response=$(curl -sH "$AUTH" $uri)
-  id=$(echo "$response" | jq --arg asset_name "$asset_name" '.assets[] | select(.name == $asset_name) | .id' | tr -d '"')
-  GH_ASSET="$uri/releases/assets/$id"
 
   echo ""
   echo "Downloading ${BOLD}${asset_name}${NORMAL}..."
-  curl -#SL -H "$AUTH" -H "Accept: application/octet-stream" \
-     "https://api.github.com/repos/turbotio/steampipe-plugin-${plugin}/releases/assets/$id" \
-     -o "$asset_name" -L --create-dirs
+  if ! curl --fail --progress-bar "$uri"; then
+    echo "Could not find version $version"
+    exit 1
+  fi
 
   # Use tar to extract it
   tar -xvf $asset_name
