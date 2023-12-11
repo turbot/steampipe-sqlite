@@ -55,5 +55,8 @@ Our [Code of Conduct](https://github.com/turbot/steampipe/blob/main/CODE_OF_COND
 
 ### Contributing
 
+## License
+This project is licensed under the [Apache 2.0 open source license](https://github.com/turbot/steampipe-table-dump/blob/main/LICENSE) - see the LICENSE file for details.
+
 Please see [CONTRIBUTING.md](https://github.com/turbot/steampipe/blob/main/CONTRIBUTING.md).
 
