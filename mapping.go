@@ -140,7 +140,11 @@ func getMappedStringValue(v string, q *Qual) (*proto.QualValue, error) {
 	case proto.ColumnType_DATETIME, proto.ColumnType_TIMESTAMP:
 		timestamp, err := time.Parse(SQLITE_TIMESTAMP_FORMAT, v)
 		if err != nil {
-			return nil, err
+			// try parsing with the DATEONLY format
+			timestamp, err = time.Parse(SQLITE_DATEONLY_FORMAT, v)
+			if err != nil {
+				return nil, err
+			}
 		}
 		return &proto.QualValue{
 			Value: &proto.QualValue_TimestampValue{

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"log"
@@ -162,12 +163,18 @@ func (p *PluginTable) BestIndex(info *sqlite.IndexInfoInput) (output *sqlite.Ind
 		output.EstimatedCost = math.MaxFloat64
 	}
 
-	qcBytes, err := json.Marshal(qc)
+	// serialize the QueryContext to JSON
+	// we need to use the json encoder here since the Operator field
+	// may contain '>' or '<' which will be escaped by the default encoder
+	buffer := bytes.NewBuffer([]byte{})
+	jsonEncoder := json.NewEncoder(buffer)
+	jsonEncoder.SetEscapeHTML(false)
+	err = jsonEncoder.Encode(qc)
 	if err != nil {
-		log.Println("[WARN] table.BestIndex json.Marshal failed: ", err)
+		log.Println("[WARN] table.BestIndex jsonEncoder.Encode failed: ", err)
 		return nil, err
 	}
-	output.IndexString = string(qcBytes)
+	output.IndexString = string(buffer.Bytes())
 
 	return output, nil
 }
