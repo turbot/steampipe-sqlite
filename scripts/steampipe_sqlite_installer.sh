@@ -40,7 +40,7 @@ main() {
 
   echo ""
   echo "Downloading ${BOLD}${asset_name}${NORMAL}..."
-  if ! curl --fail --progress-bar "$uri"; then
+  if ! curl --fail --location --progress-bar --output ${asset_name} "$uri"; then
     echo "Could not find version $version"
     exit 1
   fi
