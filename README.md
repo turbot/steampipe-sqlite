@@ -9,7 +9,7 @@ You can use an installer that enables you to choose a plugin and download the SQ
 
 ## Examples
 
-### Export EC2 instances
+### Select EC2 instances
 
 ```bash
 select * from aws_ec2_instance;
@@ -38,10 +38,10 @@ limit 10;
 ```
 ## Developing
 
-To build an extension, use the provided `Makefile`. For example, to build the AWS extension, run the following command. The built extension lands in your current directory by default, or elsewhere if you override. 
+To build an extension, use the provided `Makefile`. For example, to build the AWS extension, run the following command. The built extension lands in your current directory. 
 
 ```bash
-make plugin=aws github_plugin_url=github.com/turbot/steampipe-plugin-aws
+make build plugin=aws
 ```
 
 ## Prerequisites
