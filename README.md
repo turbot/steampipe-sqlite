@@ -4,7 +4,9 @@ A family of SQLite extensions, each derived from a [Steampipe plugin](https://hu
 
 ## Getting Started
 
-You can use an installer that enables you to choose a plugin and download the SQLite extension for that plugin. See the [installation docs](https://turbot.com/docs/steampipe_export/install) for details. 
+You can use an installer that enables you to choose a plugin and download the SQLite extension for that plugin.
+
+[Installation guide →](https://steampipe.io/docs/steampipe_export/install).
 
 
 ## Examples
@@ -44,10 +46,9 @@ To build an extension, use the provided `Makefile`. For example, to build the AW
 make build plugin=aws
 ```
 
-## Prerequisites
+## Open Source & Contributing
 
-- [Golang](https://golang.org/doc/install) Version 1.21 or higher.
+This repository is published under the [Apache 2.0](https://github.com/turbot/steampipe-sqlite/blob/main/LICENSE) license. Please see our [code of conduct](https://github.com/turbot/.github/blob/main/CODE_OF_CONDUCT.md). We look forward to collaborating with you!
 
-## Contributing
-If you would like to contribute to this project, please open an issue or create a pull request. We welcome any improvements or bug fixes. Contributions are subject to the [Apache-2.0](https://opensource.org/license/apache-2-0/) license.
+[Steampipe](https://steampipe.io) is a product produced exclusively by [Turbot HQ, Inc](https://turbot.com). It is distributed under our commercial terms. Others are allowed to make their own distribution of the software, but cannot use any of the Turbot trademarks, cloud services, etc. You can learn more in our [Open Source FAQ](https://turbot.com/open-source).
 
