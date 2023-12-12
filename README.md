@@ -12,27 +12,27 @@ You can use an installer that enables you to choose a plugin and download the SQ
 
 ### Select EC2 instances
 
-```bash
+```sql
 select * from aws_ec2_instance;
 ```
 
 ### Filter to running instances
 
-```bash
+```sql
 select * from aws_ec2_instance
 where instance_state='running';
 ```
 
 ### Select a subset of columns
 
-```bash
+```sql
 select arn, instance_state from aws_ec2_instance
 where instance_state='running';
 ```
 
 ### Limit results
 
-```bash
+```sql
 select arn, instance_state from aws_ec2_instance
 where instance_state='running'
 limit 10;
