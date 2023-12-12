@@ -1,59 +1,53 @@
-<p align="center">
-    <h1 align="center">Steampipe SQLite Extension</h1>
-</p>
+# Steampipe SQLite
 
-<p align="center">
-  <a aria-label="Steampipe logo" href="https://steampipe.io">
-    <img src="https://steampipe.io/images/steampipe_logo_wordmark_padding.svg" height="28">
-  </a>
-</p>
+A family of SQLite extensions, each derived from a [Steampipe plugin](https://hub.steampipe.io/plugins), that fetch data from cloud services and APIs.
 
-## Overview
+## Getting Started
 
-The `Steampipe SQLite Extension library` is a `SQLite3` extension that wraps [Steampipe](https://steampipe.io) plugins to interface with SQLite. 
+You can use an installer that enables you to choose a plugin and download the SQLite extension for that plugin.
 
-See the [Writing Plugins](https://steampipe.io/docs/develop/writing-plugins) guide to get started writing Steampipe plugins.
+[Installation guide →](https://steampipe.io/docs/steampipe_sqlite/install)
 
-## Building an extension
+## Examples
 
-If you want to build the extension for a single plugin, follow these steps. This process allows you to build the SQLite extension specifically for one particular plugin, rather than for Steampipe.
+### Select EC2 instances
 
-Make sure that you have the following installed in your system:
-1. `go`
-1. `make` (you will also need to ensure `CGO` is enabled)
-
-Steps:
-1. Clone this repository onto your system
-1. Change to the cloned directory
-1. Run the following commands:
-```shell
-make build plugin="<plugin short name>" plugin_github_url="<plugin repo github URL>"
-```
-Replace <plugin short name> with the alias or short name of your plugin and <plugin repo GitHub URL> with the GitHub URL of the plugin's repository, for example: github.com/turbot/steampipe-plugin-csv.
-
-This command will compile an extension specifically for the chosen plugin generating a binary `steampipe-sqlite-extension-<plugin short name>.so`.
-
-This can be loaded into your `sqlite` instance using a command similar to:
-```shell
-.load /path/to/steampipe-sqlite-extension-<plugin short name>.so
+```sql
+select * from aws_ec2_instance;
 ```
 
-### Example:
+### Filter to running instances
 
-In order to build an extension wrapping the `AWS` [plugin](https://github.com/turbot/steampipe-plugin-aws). You would run the following command:
-```shell
-make build plugin_alias="aws" plugin_github_url="github.com/turbot/steampipe-plugin-aws"
+```sql
+select * from aws_ec2_instance
+where instance_state='running';
 ```
 
-## Get involved
+### Select a subset of columns
 
-### Community
+```sql
+select arn, instance_state from aws_ec2_instance
+where instance_state='running';
+```
 
-The Steampipe community can be found on [Slack](https://turbot.com/community/join), where you can ask questions, voice ideas, and share your projects.
+### Limit results
 
-Our [Code of Conduct](https://github.com/turbot/steampipe/blob/main/CODE_OF_CONDUCT.md) applies to all Steampipe community channels.
+```sql
+select arn, instance_state from aws_ec2_instance
+where instance_state='running'
+limit 10;
+```
+## Developing
 
-### Contributing
+To build an extension, use the provided `Makefile`. For example, to build the AWS extension, run the following command. The built extension lands in your current directory. 
 
-Please see [CONTRIBUTING.md](https://github.com/turbot/steampipe/blob/main/CONTRIBUTING.md).
+```bash
+make build plugin=aws
+```
+
+## Open Source & Contributing
+
+This repository is published under the [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) license. Please see our [code of conduct](https://github.com/turbot/.github/blob/main/CODE_OF_CONDUCT.md). We look forward to collaborating with you!
+
+[Steampipe](https://steampipe.io) is a product produced exclusively by [Turbot HQ, Inc](https://turbot.com). It is distributed under our commercial terms. Others are allowed to make their own distribution of the software, but cannot use any of the Turbot trademarks, cloud services, etc. You can learn more in our [Open Source FAQ](https://turbot.com/open-source).
 
