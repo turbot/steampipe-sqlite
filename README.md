@@ -6,8 +6,7 @@ A family of SQLite extensions, each derived from a [Steampipe plugin](https://hu
 
 You can use an installer that enables you to choose a plugin and download the SQLite extension for that plugin.
 
-[Installation guide →](https://steampipe.io/docs/steampipe_sqlite/install).
-
+[Installation guide →](https://steampipe.io/docs/steampipe_sqlite/install)
 
 ## Examples
 
