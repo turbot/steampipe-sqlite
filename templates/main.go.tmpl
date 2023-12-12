@@ -5,10 +5,12 @@ package main
 import (
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 
-	"{{.PluginGithubUrl}}/{{.Plugin}}"
+  // we have seen some plugins where we need to alias it for it to be importable
+  // e.g: guardrails
+	pl "{{.PluginGithubUrl}}/{{.Plugin}}"
 )
 
-var pluginServer = plugin.Server(&plugin.ServeOpts{PluginFunc: {{.Plugin}}.Plugin})
+var pluginServer = plugin.Server(&plugin.ServeOpts{PluginFunc: pl.Plugin})
 var pluginAlias = "{{.Plugin}}"
 
 func init() {
