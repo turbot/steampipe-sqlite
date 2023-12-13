@@ -7,7 +7,7 @@ import (
 
   // we have seen some plugins where we need to alias it for it to be importable
   // e.g: guardrails
-	pl "{{.PluginGithubUrl}}/{{.Plugin}}"
+	pl "{{.PluginGithubUrl}}/tables"
 )
 
 var pluginServer = plugin.Server(&plugin.ServeOpts{PluginFunc: pl.Plugin})
