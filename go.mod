@@ -3,7 +3,7 @@ module steampipe-sqlite-extension
 go 1.21
 
 require (
-	github.com/hashicorp/go-hclog v1.6.1
+	github.com/hashicorp/go-hclog v1.6.2
 	github.com/turbot/go-kit v0.9.0-rc.1
 	github.com/turbot/steampipe-plugin-sdk/v5 v5.8.0
 	go.riyazali.net/sqlite v0.0.0-20230816114005-832d6b745bcd
