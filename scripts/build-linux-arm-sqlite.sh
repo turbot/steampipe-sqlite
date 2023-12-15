@@ -27,9 +27,10 @@ for item in "${list[@]}"; do
   echo "Processing plugin: ${plugin_name}"
 
   # Step 1: Switch to steampipe-sqlite-extension directory
-  cd /Users/pskrbasu/turbot-delivery/Steampipe/steampipe-sqlite-extension || exit 1
+  cd $GITHUB_WORKSPACE || exit 1
 
   # Step 2: Run Docker commands for SQLite Builder
+  echo "Building SQLite extension for plugin: ${plugin_name}"
   docker run --memory="10g" --memory-swap="16g" --rm --name sp_sqlite_builder -v "$(pwd)":/tmp/ext steampipe_qlite_builder make build plugin="${plugin_name}"
 
   # Step 3: Tar the SQLite extension
