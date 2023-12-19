@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/hashicorp/go-hclog v1.6.1
-	github.com/turbot/go-kit v0.9.0-rc.1
+	github.com/turbot/go-kit v0.9.0
 	github.com/turbot/steampipe-plugin-sdk/v5 v5.8.0
 	go.riyazali.net/sqlite v0.0.0-20230816114005-832d6b745bcd
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
@@ -34,7 +34,7 @@ require (
 	github.com/eko/gocache/store/bigcache/v4 v4.2.1 // indirect
 	github.com/eko/gocache/store/ristretto/v4 v4.2.1 // indirect
 	github.com/fatih/color v1.15.0 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gertd/go-pluralize v0.2.1 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
