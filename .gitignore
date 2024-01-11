@@ -24,3 +24,5 @@ go.work
 .DS_Store
 
 out/**
+# work directory created by the standalone fdw building
+/work
