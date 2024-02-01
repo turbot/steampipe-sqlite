@@ -1,0 +1,80 @@
+project_name: "steampipe_sqlite_{{.Plugin}}"
+
+builds:
+  - id: steampipe_sqlite_{{.Plugin}}_linux_arm64
+    binary: steampipe_sqlite_{{.Plugin}}.so
+    goos:
+      - linux
+    goarch:
+      - arm64
+    env:
+      - CGO_LDFLAGS=-Wl,--unresolved-symbols=ignore-in-object-files
+      - CC=aarch64-linux-gnu-gcc
+    flags:
+      - -buildmode=c-shared
+      - -o=steampipe_sqlite_{{.Plugin}}.so
+    ldflags:
+      - -s -w
+
+  - id: steampipe_sqlite_{{.Plugin}}_linux_amd64
+    binary: steampipe_sqlite_{{.Plugin}}.so
+    goos:
+      - linux
+    goarch:
+      - amd64
+    env:
+      - CGO_LDFLAGS=-Wl,--unresolved-symbols=ignore-in-object-files
+      - CC=x86_64-linux-gnu-gcc
+    flags:
+      - -buildmode=c-shared
+      - -o=steampipe_sqlite_{{.Plugin}}.so
+    ldflags:
+      - -s -w
+
+  - id: steampipe_sqlite_{{.Plugin}}_darwin_arm64
+    binary: steampipe_sqlite_{{.Plugin}}.so
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    env:
+      - CC=o64-clang
+      - CGO_LDFLAGS=-Wl,-undefined,dynamic_lookup
+    flags:
+      - -tags=netgo
+      - -buildmode=c-shared
+    ldflags:
+      - -s -w
+
+  - id: steampipe_sqlite_{{.Plugin}}_darwin_amd64
+    binary: steampipe_sqlite_{{.Plugin}}.so
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    env:
+      - CC=o64-clang
+      - CGO_LDFLAGS=-Wl,-undefined,dynamic_lookup
+    flags:
+      - -tags=netgo
+      - -buildmode=c-shared
+    ldflags:
+      - -s -w
+
+archives:
+  - format: tar.gz
+    id: binaries
+    name_template: "{{"{{"}} .ProjectName {{"}}"}}.{{"{{"}} .Os {{"}}"}}_{{"{{"}} .Arch {{"}}"}}"
+    builds:
+      - steampipe_sqlite_{{.Plugin}}_linux_arm64
+      - steampipe_sqlite_{{.Plugin}}_linux_amd64
+      - steampipe_sqlite_{{.Plugin}}_darwin_arm64
+      - steampipe_sqlite_{{.Plugin}}_darwin_amd64
+    files:
+      - none*
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  skip: true
