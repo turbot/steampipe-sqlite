@@ -11,6 +11,7 @@ builds:
       - CGO_LDFLAGS=-Wl,--unresolved-symbols=ignore-in-object-files
       - CC=aarch64-linux-gnu-gcc
     flags:
+      - -tags=netgo
       - -buildmode=c-shared
       - -o=steampipe_sqlite_{{.Plugin}}.so
     ldflags:
@@ -26,6 +27,7 @@ builds:
       - CGO_LDFLAGS=-Wl,--unresolved-symbols=ignore-in-object-files
       - CC=x86_64-linux-gnu-gcc
     flags:
+      - -tags=netgo
       - -buildmode=c-shared
       - -o=steampipe_sqlite_{{.Plugin}}.so
     ldflags:
