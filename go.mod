@@ -8,7 +8,7 @@ require (
 	github.com/turbot/steampipe-plugin-sdk/v5 v5.8.0
 	go.riyazali.net/sqlite v0.0.0-20230816114005-832d6b745bcd
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
-	google.golang.org/protobuf v1.34.2
+	google.golang.org/protobuf v1.35.2
 )
 
 require (
