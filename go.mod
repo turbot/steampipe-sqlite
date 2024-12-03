@@ -1,6 +1,6 @@
 module steampipe-sqlite-extension
 
-go 1.21
+go 1.22.4
 
 require (
 	github.com/hashicorp/go-hclog v1.6.1
@@ -8,7 +8,7 @@ require (
 	github.com/turbot/steampipe-plugin-sdk/v5 v5.8.0
 	go.riyazali.net/sqlite v0.0.0-20230816114005-832d6b745bcd
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.34.2
 )
 
 require (
@@ -50,7 +50,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.11.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-getter v1.7.3 // indirect
+	github.com/hashicorp/go-getter v1.7.5 // indirect
 	github.com/hashicorp/go-plugin v1.6.0 // indirect
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
@@ -91,12 +91,12 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.21.0 // indirect
 	go.opentelemetry.io/otel/trace v1.21.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.14.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/api v0.126.0 // indirect
