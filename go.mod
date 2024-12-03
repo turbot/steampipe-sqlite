@@ -1,6 +1,6 @@
 module steampipe-sqlite-extension
 
-go 1.21
+go 1.22.4
 
 require (
 	github.com/hashicorp/go-hclog v1.6.1
