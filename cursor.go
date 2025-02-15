@@ -72,7 +72,7 @@ func (p *PluginCursor) buildExecuteRequest(alias string, ctx *QueryContext, qual
 
 	log.Println("[DEBUG] cursor.buildExecuteRequest", "cacheEnabled", cacheEnabled, "cacheTTL", cacheTTL)
 
-	qc := proto.NewQueryContext(ctx.Columns, quals, limitRows)
+	qc := proto.NewQueryContext(ctx.Columns, quals, limitRows, nil)
 	ecd := proto.ExecuteConnectionData{
 		Limit:        qc.Limit,
 		CacheEnabled: cacheEnabled,
