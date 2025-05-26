@@ -16,9 +16,10 @@ const templateExt = ".tmpl"
 type RenderData struct {
 	Plugin          string
 	PluginGithubUrl string
+	PluginVersion   string
 }
 
-func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
+func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl, pluginVersion string) {
 	var targetFilePath string
 	err := filepath.Walk(templatePath, func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -67,6 +68,7 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
 		data := RenderData{
 			Plugin:          pluginAlias,
 			PluginGithubUrl: pluginGithubUrl,
+			PluginVersion:   pluginVersion,
 		}
 
 		// execute the template with the data
@@ -98,23 +100,33 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
 func main() {
 	// Check if the correct number of command-line arguments are provided
 	if len(os.Args) < 4 {
-		fmt.Println("Usage: go run generator.go <templatePath> <root> <plugin> [pluginGithubUrl]")
+		fmt.Println("Usage: go run generator.go <templatePath> <root> <plugin> [plugin_version] [pluginGithubUrl]")
 		return
 	}
 
 	templatePath := os.Args[1]
 	root := os.Args[2]
 	plugin := os.Args[3]
+	var pluginVersion string
 	var pluginGithubUrl string
 
-	fmt.Println(len(os.Args))
+	// Check if pluginVersion is provided as a command-line argument
+	if len(os.Args) >= 5 {
+		pluginVersion = os.Args[4]
+	}
 
 	// Check if PluginGithubUrl is provided as a command-line argument
-	if len(os.Args) == 5 {
-		pluginGithubUrl = os.Args[4]
+	if len(os.Args) >= 6 {
+		pluginGithubUrl = os.Args[5]
 	} else {
 		// If PluginGithubUrl is not provided, generate it based on PluginAlias
 		pluginGithubUrl = "github.com/turbot/steampipe-plugin-" + plugin
+	}
+
+	// If pluginVersion is provided but pluginGithubUrl is not, error out
+	if pluginVersion != "" && pluginGithubUrl == "" {
+		fmt.Println("Error: plugin_github_url is required when plugin_version is specified")
+		return
 	}
 
 	// Convert relative paths to absolute paths
@@ -130,5 +142,5 @@ func main() {
 		return
 	}
 
-	RenderDir(absTemplatePath, absRoot, plugin, pluginGithubUrl)
+	RenderDir(absTemplatePath, absRoot, plugin, pluginGithubUrl, pluginVersion)
 }
