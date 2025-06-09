@@ -10,4 +10,4 @@ ifeq ($(shell uname -s),Darwin)
 endif
 
 build:
-	go build -tags "$(BUILD_TAGS)" -buildmode=c-shared -ldflags="-linkmode=external -w -s" -o steampipe_sqlite_{{.Plugin}}.so
+	go build -tags "$(BUILD_TAGS)" -ldflags="-linkmode=external -w -s" -o steampipe_sqlite_{{.Plugin}}.so
