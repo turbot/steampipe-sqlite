@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 )
@@ -27,13 +28,45 @@ type ModuleInfo struct {
 	Dir     string `json:"Dir"`
 }
 
+// validateGithubUrl validates that the URL is a valid GitHub repository URL
+func validateGithubUrl(urlStr string) error {
+	if !strings.HasPrefix(urlStr, "github.com/") {
+		return fmt.Errorf("URL must be a GitHub repository URL (github.com/...)")
+	}
+	parts := strings.Split(urlStr, "/")
+	if len(parts) != 3 {
+		return fmt.Errorf("URL must be in format github.com/owner/repo")
+	}
+	return nil
+}
+
+// validateReplaceDirective validates a replace directive format
+func validateReplaceDirective(directive string) error {
+	// Basic format validation for replace directives
+	// Should be in format: module => replacement [version]
+	re := regexp.MustCompile(`^[\w\-\.\/]+(\/[\w\-\.]+)* => [\w\-\.\/]+(\/[\w\-\.]+)*( v\d+\.\d+\.\d+(-[\w\-\.]+)*)?$`)
+	if !re.MatchString(strings.TrimSpace(directive)) {
+		return fmt.Errorf("invalid replace directive format: %s", directive)
+	}
+	return nil
+}
+
 func getPluginReplaceDirectives(pluginGithubUrl string) (string, error) {
+	// Validate GitHub URL
+	if err := validateGithubUrl(pluginGithubUrl); err != nil {
+		return "", fmt.Errorf("invalid GitHub URL: %v", err)
+	}
+
+	fmt.Printf("Getting replace directives for plugin: %s\n", pluginGithubUrl)
+
 	// Create a temporary directory
 	tmpDir, err := os.MkdirTemp("", "plugin-mod")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
+
+	fmt.Printf("Created temp dir: %s\n", tmpDir)
 
 	// Initialize a go module
 	cmd := exec.Command("go", "mod", "init", "temp")
@@ -42,25 +75,33 @@ func getPluginReplaceDirectives(pluginGithubUrl string) (string, error) {
 		return "", fmt.Errorf("failed to init module: %v", err)
 	}
 
+	fmt.Printf("Initialized temp module\n")
+
 	// Get the latest version of the plugin
-	cmd = exec.Command("go", "get", pluginGithubUrl)
+	cmd = exec.Command("go", "get", "--", pluginGithubUrl)
 	cmd.Dir = tmpDir
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("failed to get plugin: %v", err)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("failed to get plugin: %v\nOutput: %s", err, output)
 	}
 
+	fmt.Printf("Got plugin\n")
+
 	// Get the module info
-	cmd = exec.Command("go", "list", "-m", "-json", pluginGithubUrl)
+	cmd = exec.Command("go", "list", "-m", "-json", "--", pluginGithubUrl)
 	cmd.Dir = tmpDir
 	output, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to get module info: %v", err)
 	}
 
+	fmt.Printf("Got module info: %s\n", output)
+
 	var info ModuleInfo
 	if err := json.Unmarshal(output, &info); err != nil {
 		return "", fmt.Errorf("failed to parse module info: %v", err)
 	}
+
+	fmt.Printf("Module dir: %s\n", info.Dir)
 
 	// Read the go.mod file
 	goModPath := filepath.Join(info.Dir, "go.mod")
@@ -68,6 +109,8 @@ func getPluginReplaceDirectives(pluginGithubUrl string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read go.mod: %v", err)
 	}
+
+	fmt.Printf("Read go.mod: %s\n", content)
 
 	// Extract replace directives
 	var replaces []string
@@ -85,15 +128,39 @@ func getPluginReplaceDirectives(pluginGithubUrl string) (string, error) {
 				continue
 			}
 			if line != "" {
+				// Validate replace directive
+				if err := validateReplaceDirective(line); err != nil {
+					return "", fmt.Errorf("invalid replace directive in plugin go.mod: %v", err)
+				}
 				replaces = append(replaces, line)
 			}
 		} else if strings.HasPrefix(line, "replace ") {
-			replaces = append(replaces, strings.TrimPrefix(line, "replace "))
+			directive := strings.TrimPrefix(line, "replace ")
+			// Validate replace directive
+			if err := validateReplaceDirective(directive); err != nil {
+				return "", fmt.Errorf("invalid replace directive in plugin go.mod: %v", err)
+			}
+			replaces = append(replaces, directive)
 		}
 	}
 
+	fmt.Printf("Found replace directives: %v\n", replaces)
+
 	if len(replaces) > 0 {
-		return "\n// Replace directives from plugin\nreplace (\n\t" + strings.Join(replaces, "\n\t") + "\n)\n", nil
+		// Write replace directives to a file
+		var content strings.Builder
+		content.WriteString("\n// Replace directives from plugin\nreplace (\n")
+		for _, r := range replaces {
+			content.WriteString("\t")
+			content.WriteString(r)
+			content.WriteString("\n")
+		}
+		content.WriteString(")\n")
+
+		// Write to replace.mod file
+		if err := os.WriteFile("replace.mod", []byte(content.String()), 0644); err != nil {
+			return "", fmt.Errorf("failed to write replace directives: %v", err)
+		}
 	}
 	return "", nil
 }
@@ -151,7 +218,10 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
 
 		// If this is go.mod, append any replace directives from the plugin
 		if strings.HasSuffix(targetFilePath, "go.mod") {
-			if replaces, err := getPluginReplaceDirectives(pluginGithubUrl); err == nil && replaces != "" {
+			replaces, err := getPluginReplaceDirectives(pluginGithubUrl)
+			if err != nil {
+				fmt.Printf("Error getting plugin replace directives: %v\n", err)
+			} else if replaces != "" {
 				content += replaces
 			}
 		}
