@@ -82,7 +82,7 @@ func validateGithubUrl(urlStr string) error {
 // validateModulePath validates a Go module path format
 func validateModulePath(path string) error {
 	// Module path should be alphanumeric with possible dots, dashes, and slashes
-	re := regexp.MustCompile(`^[\w\-\.]+(/[\w\-\.]+)*$`)
+	re := regexp.MustCompile(`^[a-zA-Z0-9._/-]+$`)
 	if !re.MatchString(path) {
 		return fmt.Errorf("invalid module path format: %s", path)
 	}
@@ -94,8 +94,8 @@ func validateVersion(version string) error {
 	if version == "" {
 		return nil // Version is optional
 	}
-	// Version should be in format v1.2.3 or v1.2.3-beta.1
-	re := regexp.MustCompile(`^v\d+\.\d+\.\d+(-[\w\-\.]+)*$`)
+	// Version should be in format v1.2.3 or v1.2.3-beta.1 or v1.2.3+build.1
+	re := regexp.MustCompile(`^v\d+\.\d+\.\d+(-[\w\-\.]+)?(\+[\w\-\.]+)?$`)
 	if !re.MatchString(version) {
 		return fmt.Errorf("invalid version format: %s", version)
 	}
@@ -174,7 +174,7 @@ func getPluginReplaceDirectives(pluginGithubUrl string, targetDir string) (strin
 	// Get the latest version of the plugin
 	cmd = exec.Command("go", "get")
 	cmd.Dir = tmpDir
-	cmd.Args = append(cmd.Args, "--", safeUrl) // Ensure URL is treated as literal
+	cmd.Args = append(cmd.Args, safeUrl) // Append URL directly
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return "", GoVersionInfo{}, fmt.Errorf("failed to get plugin: %v\nOutput: %s", err, output)
 	}
@@ -184,7 +184,7 @@ func getPluginReplaceDirectives(pluginGithubUrl string, targetDir string) (strin
 	// Get the module info
 	cmd = exec.Command("go", "list", "-m", "-json")
 	cmd.Dir = tmpDir
-	cmd.Args = append(cmd.Args, "--", safeUrl) // Ensure URL is treated as literal
+	cmd.Args = append(cmd.Args, safeUrl) // Append the URL directly
 	output, err := cmd.Output()
 	if err != nil {
 		return "", GoVersionInfo{}, fmt.Errorf("failed to get module info: %v", err)
@@ -272,6 +272,13 @@ func getPluginReplaceDirectives(pluginGithubUrl string, targetDir string) (strin
 }
 
 func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
+	// Cache for plugin info
+	var (
+		cachedReplaces string
+		cachedGoInfo   GoVersionInfo
+		cachedUrl      string
+	)
+
 	var targetFilePath string
 	err := filepath.Walk(templatePath, func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -312,11 +319,16 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
 		var goInfo GoVersionInfo
 		var replaces string
 		if strings.HasSuffix(targetFilePath, "go.mod") {
-			var err error
-			replaces, goInfo, err = getPluginReplaceDirectives(pluginGithubUrl, root)
-			if err != nil {
-				fmt.Printf("Error getting plugin replace directives: %v\n", err)
+			if cachedUrl != pluginGithubUrl {
+				var err error
+				cachedReplaces, cachedGoInfo, err = getPluginReplaceDirectives(pluginGithubUrl, root)
+				if err != nil {
+					fmt.Printf("Error getting plugin replace directives: %v\n", err)
+				}
+				cachedUrl = pluginGithubUrl
 			}
+			replaces = cachedReplaces
+			goInfo = cachedGoInfo
 		}
 
 		// define the data to be used in the template
