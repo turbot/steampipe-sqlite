@@ -3,8 +3,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
@@ -19,7 +21,84 @@ type RenderData struct {
 	PluginVersion   string
 }
 
-func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl, pluginVersion string) {
+type ModuleInfo struct {
+	Path    string `json:"Path"`
+	Version string `json:"Version"`
+	Dir     string `json:"Dir"`
+}
+
+func getPluginReplaceDirectives(pluginGithubUrl string) (string, error) {
+	// Create a temporary directory
+	tmpDir, err := os.MkdirTemp("", "plugin-mod")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Initialize a go module
+	cmd := exec.Command("go", "mod", "init", "temp")
+	cmd.Dir = tmpDir
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to init module: %v", err)
+	}
+
+	// Get the latest version of the plugin
+	cmd = exec.Command("go", "get", pluginGithubUrl)
+	cmd.Dir = tmpDir
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to get plugin: %v", err)
+	}
+
+	// Get the module info
+	cmd = exec.Command("go", "list", "-m", "-json", pluginGithubUrl)
+	cmd.Dir = tmpDir
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get module info: %v", err)
+	}
+
+	var info ModuleInfo
+	if err := json.Unmarshal(output, &info); err != nil {
+		return "", fmt.Errorf("failed to parse module info: %v", err)
+	}
+
+	// Read the go.mod file
+	goModPath := filepath.Join(info.Dir, "go.mod")
+	content, err := os.ReadFile(goModPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read go.mod: %v", err)
+	}
+
+	// Extract replace directives
+	var replaces []string
+	lines := strings.Split(string(content), "\n")
+	inReplace := false
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "replace (") {
+			inReplace = true
+			continue
+		}
+		if inReplace {
+			if line == ")" {
+				inReplace = false
+				continue
+			}
+			if line != "" {
+				replaces = append(replaces, line)
+			}
+		} else if strings.HasPrefix(line, "replace ") {
+			replaces = append(replaces, strings.TrimPrefix(line, "replace "))
+		}
+	}
+
+	if len(replaces) > 0 {
+		return "\n// Replace directives from plugin\nreplace (\n\t" + strings.Join(replaces, "\n\t") + "\n)\n", nil
+	}
+	return "", nil
+}
+
+func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl string) {
 	var targetFilePath string
 	err := filepath.Walk(templatePath, func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -29,27 +108,19 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl, pluginVersion s
 
 		fmt.Println("filePath:", filePath)
 		if info.IsDir() {
-			// fmt.Println("not a file, continuing...\n")
 			return nil
 		}
 
 		relativeFilePath := strings.TrimPrefix(filePath, root)
-		// fmt.Println("relative path:", relativeFilePath)
 		ext := filepath.Ext(filePath)
-		// fmt.Println("extension:", ext)
 
 		if ext != templateExt {
-			// fmt.Println("not tmpl, continuing...\n")
 			return nil
 		}
 
 		templateFileName := strings.TrimPrefix(relativeFilePath, "/templates/")
-		// fmt.Println("template fileName:", templateFileName)
 		fileName := strings.TrimSuffix(templateFileName, ext)
-		// fmt.Println("actual fileName:", fileName)
-
 		targetFilePath = path.Join(root, fileName)
-		// fmt.Println("targetFilePath:", targetFilePath)
 
 		// read template file
 		templateContent, err := os.ReadFile(filePath)
@@ -68,7 +139,6 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl, pluginVersion s
 		data := RenderData{
 			Plugin:          pluginAlias,
 			PluginGithubUrl: pluginGithubUrl,
-			PluginVersion:   pluginVersion,
 		}
 
 		// execute the template with the data
@@ -77,13 +147,22 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl, pluginVersion s
 			return err
 		}
 
+		content := renderedContent.String()
+
+		// If this is go.mod, append any replace directives from the plugin
+		if strings.HasSuffix(targetFilePath, "go.mod") {
+			if replaces, err := getPluginReplaceDirectives(pluginGithubUrl); err == nil && replaces != "" {
+				content += replaces
+			}
+		}
+
 		if err := os.MkdirAll(filepath.Dir(targetFilePath), 0755); err != nil {
 			fmt.Printf("Error creating directory: %v\n", err)
 			return err
 		}
 
 		// write the rendered content to the target file
-		if err := os.WriteFile(targetFilePath, []byte(renderedContent.String()), 0644); err != nil {
+		if err := os.WriteFile(targetFilePath, []byte(content), 0644); err != nil {
 			fmt.Printf("Error writing to target file: %v\n", err)
 			return err
 		}
@@ -100,33 +179,21 @@ func RenderDir(templatePath, root, pluginAlias, pluginGithubUrl, pluginVersion s
 func main() {
 	// Check if the correct number of command-line arguments are provided
 	if len(os.Args) < 4 {
-		fmt.Println("Usage: go run generator.go <templatePath> <root> <plugin> [plugin_version] [pluginGithubUrl]")
+		fmt.Println("Usage: go run generator.go <templatePath> <root> <plugin> [pluginGithubUrl]")
 		return
 	}
 
 	templatePath := os.Args[1]
 	root := os.Args[2]
 	plugin := os.Args[3]
-	var pluginVersion string
 	var pluginGithubUrl string
 
-	// Check if pluginVersion is provided as a command-line argument
-	if len(os.Args) >= 5 {
-		pluginVersion = os.Args[4]
-	}
-
 	// Check if PluginGithubUrl is provided as a command-line argument
-	if len(os.Args) >= 6 {
-		pluginGithubUrl = os.Args[5]
+	if len(os.Args) >= 5 {
+		pluginGithubUrl = os.Args[4]
 	} else {
 		// If PluginGithubUrl is not provided, generate it based on PluginAlias
 		pluginGithubUrl = "github.com/turbot/steampipe-plugin-" + plugin
-	}
-
-	// If pluginVersion is provided but pluginGithubUrl is not, error out
-	if pluginVersion != "" && pluginGithubUrl == "" {
-		fmt.Println("Error: plugin_github_url is required when plugin_version is specified")
-		return
 	}
 
 	// Convert relative paths to absolute paths
@@ -142,5 +209,5 @@ func main() {
 		return
 	}
 
-	RenderDir(absTemplatePath, absRoot, plugin, pluginGithubUrl, pluginVersion)
+	RenderDir(absTemplatePath, absRoot, plugin, pluginGithubUrl)
 }
