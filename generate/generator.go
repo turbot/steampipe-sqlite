@@ -59,7 +59,7 @@ func validateGoVersionInfo(info GoVersionInfo) error {
 		}
 	}
 	if info.Toolchain != "" {
-		toolchainRegex := regexp.MustCompile(`^go\d+\.\d+\.\d+$`)
+		toolchainRegex := regexp.MustCompile(`^go\d+\.\d+(\.\d+)?(rc\d+|beta\d+)?$`)
 		if !toolchainRegex.MatchString(info.Toolchain) {
 			return fmt.Errorf("invalid Go toolchain format: %s", info.Toolchain)
 		}
@@ -81,8 +81,9 @@ func validateGithubUrl(urlStr string) error {
 
 // validateModulePath validates a Go module path format
 func validateModulePath(path string) error {
-	// Module path should be alphanumeric with possible dots, dashes, and slashes
-	re := regexp.MustCompile(`^[a-zA-Z0-9._/-]+$`)
+	// Module path should be lowercase alphanumeric with dots, hyphens, and slashes
+	// Each component must be valid and follow Go module naming conventions
+	re := regexp.MustCompile(`^[a-z0-9]+(?:[-./][a-z0-9]+)*$`)
 	if !re.MatchString(path) {
 		return fmt.Errorf("invalid module path format: %s", path)
 	}
@@ -94,8 +95,12 @@ func validateVersion(version string) error {
 	if version == "" {
 		return nil // Version is optional
 	}
-	// Version should be in format v1.2.3 or v1.2.3-beta.1 or v1.2.3+build.1
-	re := regexp.MustCompile(`^v\d+\.\d+\.\d+(-[\w\-\.]+)?(\+[\w\-\.]+)?$`)
+	// Version should be in format:
+	// - v1.2.3
+	// - v1.2.3-beta.1
+	// - v1.2.3+build.1
+	// - v0.0.0-20231201123456-abcdef123456 (pseudo-versions)
+	re := regexp.MustCompile(`^v\d+(\.\d+){0,2}(-\d{14}-[a-f0-9]{12}|(-[\w\-\.]+)?(\+[\w\-\.]+)?)?$`)
 	if !re.MatchString(version) {
 		return fmt.Errorf("invalid version format: %s", version)
 	}
