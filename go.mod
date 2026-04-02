@@ -6,7 +6,7 @@ toolchain go1.24.0
 
 require (
 	github.com/hashicorp/go-hclog v1.6.3
-	github.com/turbot/go-kit v1.0.0
+	github.com/turbot/go-kit v1.1.0
 	github.com/turbot/steampipe-plugin-sdk/v5 v5.11.3
 	go.riyazali.net/sqlite v0.0.0-20230816114005-832d6b745bcd
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
