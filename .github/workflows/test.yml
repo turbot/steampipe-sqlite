@@ -40,7 +40,7 @@ jobs:
 
       - name: Test building sqlite extension with chaos plugin
         run: |
-          make build plugin=chaos
+          make build plugin=chaos plugin_version=v2.0.3
 
       - name: Check binary is created
         run: |
