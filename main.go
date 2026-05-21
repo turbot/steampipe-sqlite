@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/turbot/steampipe-plugin-sdk/v5/grpc"
-	_ "github.com/turbot/steampipe-plugin-sdk/v5/logging"
+	"github.com/turbot/steampipe-plugin-sdk/v6/grpc"
+	_ "github.com/turbot/steampipe-plugin-sdk/v6/logging"
 )
 
 var pluginServer *grpc.PluginServer

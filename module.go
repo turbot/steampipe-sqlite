@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/turbot/steampipe-plugin-sdk/v5/grpc/proto"
+	"github.com/turbot/steampipe-plugin-sdk/v6/grpc/proto"
 	"go.riyazali.net/sqlite"
 )
 
