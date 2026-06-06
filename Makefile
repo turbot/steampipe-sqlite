@@ -37,6 +37,10 @@ build: validate_plugin validate_version
 		fi; \
 	fi && \
 	go mod tidy && \
+	if [ -f replace.mod ]; then \
+		cat replace.mod >> go.mod && \
+		go mod tidy; \
+	fi && \
 	$(MAKE) -f out/Makefile build
 
 	# Copy the created binary from the work directory
@@ -63,7 +67,11 @@ render: validate_plugin validate_version
 		echo "go get $(plugin_github_url)@$(plugin_version)" && \
 		go get $(plugin_github_url)@$(plugin_version); \
 	fi && \
-	go mod tidy
+	go mod tidy && \
+	if [ -f replace.mod ]; then \
+		cat replace.mod >> go.mod && \
+		go mod tidy; \
+	fi
 
 	# Note: The work directory will contain the full code tree with rendered changes
 
