@@ -45,6 +45,19 @@ To build an extension, use the provided `Makefile`. For example, to build the AW
 make build plugin=aws
 ```
 
+To cross-compile a macOS extension on Linux, run the same target in the [goreleaser-cross](https://github.com/goreleaser/goreleaser-cross) image with the target platform set. For Apple Silicon:
+
+```bash
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+  -v "$PWD:/src" -w /src \
+  -e GOOS=darwin -e GOARCH=arm64 -e CGO_ENABLED=1 -e CC=oa64-clang \
+  -e MACOSX_DEPLOYMENT_TARGET=14.0 \
+  --entrypoint make ghcr.io/goreleaser/goreleaser-cross:v1.26.10 \
+  build plugin=aws
+```
+
+For Intel Macs, use `GOARCH=amd64` and `CC=o64-clang`.
+
 ## Open Source & Contributing
 
 This repository is published under the [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) license. Please see our [code of conduct](https://github.com/turbot/.github/blob/main/CODE_OF_CONDUCT.md). We look forward to collaborating with you!

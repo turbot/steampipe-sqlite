@@ -1,4 +1,4 @@
-GOLANG_CROSS_VERSION  ?= v1.21.5
+GOLANG_CROSS_VERSION  ?= v1.26.10
 
 # Check if the 'plugin' variable is set
 validate_plugin:
@@ -21,11 +21,14 @@ build: validate_plugin validate_version
 	mkdir -p work
 
 	# Copy the entire source tree, excluding .git directory, into the new directory
-	rsync -a --exclude='.git' . work/ >/dev/null 2>&1
+	# (tar rather than rsync, which the goreleaser-cross image doesn't have)
+	tar -cf - --exclude=./.git --exclude=./work . | tar -xf - -C work
 
-	# Change to the new directory to perform operations
+	# Change to the new directory to perform operations. The generator runs on
+	# the build host, so it's built for the host even when GOOS/GOARCH are set
+	# for a cross build (e.g. GOOS=darwin on Linux).
 	cd work && \
-	go run generate/generator.go templates . $(plugin) $(plugin_version) $(plugin_github_url) && \
+	GOOS=$$(go env GOHOSTOS) GOARCH=$$(go env GOHOSTARCH) go run generate/generator.go templates . $(plugin) $(plugin_version) $(plugin_github_url) && \
 	if [ ! -z "$(plugin_version)" ]; then \
 		MAJOR_VERSION=$$(echo $(plugin_version) | grep -o '^v[0-9]\+' || echo "v1") && \
 		if [ "$$MAJOR_VERSION" = "v1" ] || [ "$$MAJOR_VERSION" = "v0" ]; then \
@@ -54,11 +57,13 @@ render: validate_plugin validate_version
 	mkdir -p work
 
 	# Copy the entire source tree, excluding .git directory, into the new directory
-	rsync -a --exclude='.git' . work/ >/dev/null 2>&1
+	# (tar rather than rsync, which the goreleaser-cross image doesn't have)
+	tar -cf - --exclude=./.git --exclude=./work . | tar -xf - -C work
 
-	# Change to the new directory to perform operations
+	# Change to the new directory to perform operations. The generator is built
+	# for the host, as in the build target.
 	cd work && \
-	go run generate/generator.go templates . $(plugin) $(plugin_version) $(plugin_github_url) && \
+	GOOS=$$(go env GOHOSTOS) GOARCH=$$(go env GOHOSTARCH) go run generate/generator.go templates . $(plugin) $(plugin_version) $(plugin_github_url) && \
 	if [ ! -z "$(plugin_version)" ]; then \
 		echo "go get $(plugin_github_url)@$(plugin_version)" && \
 		go get $(plugin_github_url)@$(plugin_version); \

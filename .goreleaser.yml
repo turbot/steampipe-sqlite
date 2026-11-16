@@ -1,3 +1,10 @@
+# Used by `make release-dry-run`, which runs GoReleaser in goreleaser-cross.
+# The Steampipe Anywhere release workflows (turbot/steampipe-workflows) don't
+# use this file: they build each extension with `make build`, running in
+# goreleaser-cross for the Darwin targets with the same CC and
+# MACOSX_DEPLOYMENT_TARGET as below.
+version: 2
+
 builds:
   - id: steampipe_sqlite_net_linux_arm64
     binary: steampipe_sqlite_net.so
@@ -9,8 +16,8 @@ builds:
       - CGO_LDFLAGS=-Wl,--unresolved-symbols=ignore-in-object-files
       - CC=aarch64-linux-gnu-gcc
     flags:
+      - -tags=netgo
       - -buildmode=c-shared
-      - -o=steampipe_sqlite_net.so
     ldflags:
       - -s -w
 
@@ -24,11 +31,13 @@ builds:
       - CGO_LDFLAGS=-Wl,--unresolved-symbols=ignore-in-object-files
       - CC=x86_64-linux-gnu-gcc
     flags:
+      - -tags=netgo
       - -buildmode=c-shared
-      - -o=steampipe_sqlite_net.so
     ldflags:
       - -s -w
 
+  # Without MACOSX_DEPLOYMENT_TARGET, osxcross sets the minimum macOS version
+  # (LC_BUILD_VERSION minos) to its own default rather than 14.0.
   - id: steampipe_sqlite_net_darwin_arm64
     binary: steampipe_sqlite_net.so
     goos:
@@ -36,8 +45,9 @@ builds:
     goarch:
       - arm64
     env:
-      - CC=o64-clang
+      - CC=oa64-clang
       - CGO_LDFLAGS=-Wl,-undefined,dynamic_lookup
+      - MACOSX_DEPLOYMENT_TARGET=14.0
     flags:
       - -tags=netgo
       - -buildmode=c-shared
@@ -53,6 +63,7 @@ builds:
     env:
       - CC=o64-clang
       - CGO_LDFLAGS=-Wl,-undefined,dynamic_lookup
+      - MACOSX_DEPLOYMENT_TARGET=14.0
     flags:
       - -tags=netgo
       - -buildmode=c-shared
@@ -60,10 +71,10 @@ builds:
       - -s -w
 
 archives:
-  - format: tar.gz
+  - formats: [tar.gz]
     id: binaries
     name_template: "steampipe_sqlite_net.{{ .Os }}_{{ .Arch }}"
-    builds:
+    ids:
       - steampipe_sqlite_net_linux_arm64
       - steampipe_sqlite_net_linux_amd64
       - steampipe_sqlite_net_darwin_arm64
@@ -75,4 +86,4 @@ checksum:
   name_template: "checksums.txt"
 
 changelog:
-  skip: true
+  disable: true
