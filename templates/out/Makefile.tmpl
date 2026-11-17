@@ -1,12 +1,12 @@
-export CGO_LDFLAGS = -Wl,--unresolved-symbols=ignore-in-object-files
-# Determine the operating system
-OS := $(shell uname)
-
 # Always enable netgo for the build
 BUILD_TAGS = netgo
 
-ifeq ($(shell uname -s),Darwin)
+# The linker flags follow the target OS (GOOS), not the host, so a Darwin
+# build cross-compiled on Linux gets the Darwin flags.
+ifeq ($(shell go env GOOS),darwin)
 	export CGO_LDFLAGS = -Wl,-undefined,dynamic_lookup
+else
+	export CGO_LDFLAGS = -Wl,--unresolved-symbols=ignore-in-object-files
 endif
 
 build:
